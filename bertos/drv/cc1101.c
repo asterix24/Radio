@@ -150,9 +150,9 @@ void cc1101_powerOnReset(void)
 void cc1101_init(const Setting  *settings)
 {
 	CC1101_HW_INIT();
-	
+
 	cc1101_powerOnReset();
-	
+
 	for (int i = 0; settings[i].addr != 0xFF && settings[i].data != 0xFF; i++)
 	{
 		cc1101_write(settings[i].addr, &settings[i].data, sizeof(uint8_t));

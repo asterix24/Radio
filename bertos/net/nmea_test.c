@@ -891,7 +891,7 @@ static void *find_test(int n)
 	for (unsigned i=0; i < countof(test_vector); i++)
 		if (n == test_vector[i].test_num)
 			return test_vector[i].val;
-	
+
 	return NULL;
 }
 

@@ -267,3 +267,4 @@ int radio_recv(void *buf, size_t len, mtime_t timeout)
 
 	return rx_len;
 }
+

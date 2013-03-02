@@ -48,8 +48,12 @@
 #include <drv/timer.h>
 #include <drv/adc.h>
 #include <drv/spi_bitbang.h>
+#include <drv/ser.h>
+
+#include <net/nmea.h>
 
 #include <string.h>
+#include <stdio.h>
 
 struct Beacon
 {
@@ -57,8 +61,39 @@ struct Beacon
 	uint32_t code;
 	uint16_t temp;
 	uint16_t vref;
+	char aprs_lat[9];
+	char aprs_lon[10];
+	char aprs_time[8];
+	bool gps_fix;
+	time_t gps_clock;
+	ticks_t last_heard;
 };
+
+static Serial ser;
 static struct Beacon beacon;
+static nmeap_context_t nmea;
+static NmeaGga gps_gga;
+
+static void nmea_gpgga_callback(nmeap_context_t *context, void *data, void *userdata)
+{
+    (void)data;
+    (void)userdata;
+
+    beacon.last_heard = timer_clock();
+    sprintf(beacon.aprs_time, "%.6sh", context->token[1]);
+    sprintf(beacon.aprs_lat, "%.7s%c", context->token[2], *context->token[3]);
+    sprintf(beacon.aprs_lon, "%.8s%c", context->token[4], *context->token[5]);
+
+    if (gps_gga.quality > 0)
+    {
+        beacon.gps_fix = true;
+        beacon.gps_clock = gps_gga.time;
+    }
+    else
+        beacon.gps_fix = false;
+}
+
+
 
 static void init(void)
 {
@@ -69,6 +104,7 @@ static void init(void)
 	adc_init();
 
 	cc1101_init(ping_low_baud_868);
+
 }
 
 int main(void)
@@ -76,17 +112,27 @@ int main(void)
 	init();
 	int ret;
 	int id = radio_id();
-	int rssi;
-
 	beacon.code = 0xdbf1;
 	beacon.count = 0;
 
 	kprintf("%s [%d]\n", id == RADIO_MASTER ? "MASTER" : "SLAVE", id);
+
+	nmeap_init(&nmea, NULL);
+	nmeap_addParser(&nmea, "GPGGA", nmea_gpgga, nmea_gpgga_callback, &gps_gga);
+
+	if (id == RADIO_MASTER)
+	{
+		ser_init(&ser, SER_UART1);
+		ser_setbaudrate(&ser, 38400);
+	}
+
+
 	while (1)
 	{
-
 		if (id == RADIO_MASTER)
 		{
+			nmea_poll(&nmea, &ser.fd);
+
 			if ((ret = radio_recv(&beacon, sizeof(beacon), -1)) > 0)
 			{
 				uint8_t lqi = radio_lqi();
@@ -96,7 +142,6 @@ int main(void)
 						 beacon.vref / 1000, beacon.vref % 1000);
 			}
 
-			rssi = 0;
 			memset(&beacon, 0, sizeof(struct Beacon));
 		}
 		else
