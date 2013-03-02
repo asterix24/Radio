@@ -42,8 +42,6 @@
 #ifndef HW_SIPO_H
 #define HW_SIPO_H
 
-#warning TODO:This is an example implementation, you must implement it!
-
 /**
  * Sipo ids map.
  */

@@ -10,6 +10,7 @@ radio_PROGRAMMER_PORT = none
 # Files included by the user.
 radio_USER_CSRC = \
 	$(radio_SRC_PATH)/main.c \
+	$(radio_SRC_PATH)/hw/hw_cc1101.c \
 	#
 
 # Files included by the user.
@@ -40,4 +41,5 @@ radio_USER_CPPAFLAGS = \
 radio_USER_CPPFLAGS = \
 	-fno-strict-aliasing \
 	-fwrapv \
+	-Os
 	#

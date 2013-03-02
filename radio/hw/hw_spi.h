@@ -32,48 +32,64 @@
  *
  * \brief Hardware macro definition.
  *
+ *
  * \author Daniele Basile <asterix@develer.com>
  */
 
 #ifndef HW_SPI_H
 #define HW_SPI_H
 
-#warning TODO:This is an example implementation, you must implement it!
+#include <cfg/macros.h>
 
+#include <io/stm32.h>
+
+#include <drv/gpio_stm32.h>
+#include <drv/clock_stm32.h>
+#include <drv/timer.h>
+
+#define GPIO_BASE       ((struct stm32_gpio *)GPIOA_BASE)
 /**
  * SPI pin definition.
  */
-#define CS       /* Implement me! */
-#define SCK      /* Implement me! */
-#define MOSI     /* Implement me! */
-#define MISO     /* Implement me! */
+#define CS       BV(4)  //PA4
+#define SCK      BV(5)  //PA5
+#define MOSI     BV(7)  //PA7
+#define MISO     BV(6)  //PA6
+#define STROBE   BV(0)  //PA0
+
 /*\}*/
 
-#define MOSI_LOW()       do { /* Implement me! */ } while(0)
-#define MOSI_HIGH()      do { /* Implement me! */ } while(0)
 
-#define SS_ACTIVE()      do { /* Implement me! */ } while(0)
-#define SS_INACTIVE()    do { /* Implement me! */ } while(0)
+#define STROBE_ON()      stm32_gpioPinWrite(GPIO_BASE, STROBE, 1)
+#define STROBE_OFF()     stm32_gpioPinWrite(GPIO_BASE, STROBE, 0)
 
-#define SCK_INACTIVE()   do { /* Implement me! */ } while(0)
-#define SCK_ACTIVE()     do { /* Implement me! */ } while(0)
+#define MOSI_LOW()       stm32_gpioPinWrite(GPIO_BASE, MOSI, 0)
+#define MOSI_HIGH()      stm32_gpioPinWrite(GPIO_BASE, MOSI, 1)
 
-#define IS_MISO_HIGH()	 (false/* Implement me! */)
+#define SS_ACTIVE()      stm32_gpioPinWrite(GPIO_BASE, CS, 0)
+#define SS_INACTIVE()    stm32_gpioPinWrite(GPIO_BASE, CS, 1)
+
+#define SCK_INACTIVE()   stm32_gpioPinWrite(GPIO_BASE, SCK, 0)
+#define SCK_ACTIVE()     stm32_gpioPinWrite(GPIO_BASE, SCK, 1)
+
+#define IS_MISO_HIGH()	 stm32_gpioPinRead(GPIO_BASE, MISO)
 
 #define SCK_PULSE()\
-	do { \
+	do {\
 			SCK_ACTIVE();\
-			/* NOP; */ \
+			timer_udelay(1);\
 			SCK_INACTIVE();\
-	} while(0)
+	} while (0)
 
 
 #define SPI_HW_INIT() \
 	do { \
-		/* Init pins here! */ \
-		SS_INACTIVE(); \
-		MOSI_LOW(); \
-		SCK_INACTIVE(); \
+		/* Enable clocking on GPIOA */	\
+		RCC->APB2ENR |= RCC_APB2_GPIOA;			\
+		stm32_gpioPinWrite(GPIO_BASE, CS | SCK, 1); \
+		stm32_gpioPinWrite(GPIO_BASE, MOSI | STROBE, 0); \
+		stm32_gpioPinConfig(GPIO_BASE, CS | SCK | MOSI | STROBE, GPIO_MODE_OUT_PP, GPIO_SPEED_50MHZ); \
+		stm32_gpioPinConfig(GPIO_BASE, MISO, GPIO_MODE_IN_FLOATING, GPIO_SPEED_50MHZ); \
 	} while(0)
 
 #endif /* HW_SPI_H */
