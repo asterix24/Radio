@@ -27,24 +27,43 @@
  * the GNU General Public License.
  *
  * Copyright 2010 Develer S.r.l. (http://www.develer.com/)
- *
+ * All Rights Reserved.
  * -->
  *
- * \brief Low-level ADC module for ARM (interface).
+ * \brief Some ADC utilis.
  *
  * \author Daniele Basile <asterix@develer.com>
- *
  */
 
-#include <cpu/detect.h>
+#ifndef HW_ADC_H
+#define HW_ADC_H
 
-#if CPU_CM3_LM3S
-	#include "adc_lm3s.h"
-#elif CPU_CM3_STM32
-	#include "adc_stm32.h"
-#elif CPU_CM3_SAM3
-	#include "adc_sam3.h"
-/*#elif  Add other ARM families here */
-#else
-	#error Unknown CPU
-#endif
+#include <drv/adc.h>
+
+#include <io/stm32.h>
+
+/*
+ * Return the Vrefint voltage in mV.
+ */
+INLINE uint16_t hw_readVrefint(void)
+{
+	return ADC_RANGECONV(adc_read(ADC_VREFINT_CH), 0, 3300);
+}
+
+/*
+ * Return the cpu core temperature in degrees * 100.
+ */
+INLINE uint16_t hw_readIntTemp(void)
+{
+	uint16_t vsens = ADC_RANGECONV(adc_read(ADC_TEMP_CH), 0, 3300);
+
+	uint16_t temp = (((ADC_TEMP_V25 - vsens) * 1000)/ ADC_TEMP_SLOPE) + ADC_TEMP_CONST;
+	return (temp / 10);
+}
+
+INLINE uint16_t hw_readRawTemp(void)
+{
+	return (uint16_t)ADC_RANGECONV(adc_read(ADC_TEMP_CH), 0, 3300);
+}
+
+#endif /* HW_ADC_H */

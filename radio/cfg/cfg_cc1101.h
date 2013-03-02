@@ -26,25 +26,35 @@
  * invalidate any other reasons why the executable file might be covered by
  * the GNU General Public License.
  *
- * Copyright 2010 Develer S.r.l. (http://www.develer.com/)
+ * Copyright 2012 Develer S.r.l. (http://www.develer.com/)
  *
  * -->
  *
- * \brief Low-level ADC module for ARM (interface).
+ * \brief Configuration file for the CC1101 chip driver.
  *
  * \author Daniele Basile <asterix@develer.com>
- *
  */
 
-#include <cpu/detect.h>
+#ifndef CFG_CC1101_H
+#define CFG_CC1101_H
 
-#if CPU_CM3_LM3S
-	#include "adc_lm3s.h"
-#elif CPU_CM3_STM32
-	#include "adc_stm32.h"
-#elif CPU_CM3_SAM3
-	#include "adc_sam3.h"
-/*#elif  Add other ARM families here */
-#else
-	#error Unknown CPU
-#endif
+/**
+ * Module logging level.
+ *
+ * $WIZ$ type = "enum"
+ * $WIZ$ value_list = "log_level"
+ */
+#define CC1101_LOG_LEVEL      LOG_LVL_ERR
+
+/**
+ * Module logging format.
+ *
+ * $WIZ$ type = "enum"
+ * $WIZ$ value_list = "log_format"
+ */
+#define CC1101_LOG_FORMAT     LOG_FMT_TERSE
+
+#define CONFIG_RADIO_CURRENT_OPT 0
+
+
+#endif /* CFG_CC1101_H */
