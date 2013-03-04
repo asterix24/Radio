@@ -73,6 +73,7 @@ static Serial ser;
 static struct Beacon beacon;
 static nmeap_context_t nmea;
 static NmeaGga gps_gga;
+static char tmp[255];
 
 static void nmea_gpgga_callback(nmeap_context_t *context, void *data, void *userdata)
 {
@@ -117,12 +118,12 @@ int main(void)
 
 	kprintf("%s [%d]\n", id == RADIO_MASTER ? "MASTER" : "SLAVE", id);
 
-	nmeap_init(&nmea, NULL);
-	nmeap_addParser(&nmea, "GPGGA", nmea_gpgga, nmea_gpgga_callback, &gps_gga);
+	//nmeap_init(&nmea, NULL);
+	//nmeap_addParser(&nmea, "GPGGA", nmea_gpgga, nmea_gpgga_callback, &gps_gga);
 
-	if (id == RADIO_MASTER)
+	if (id != RADIO_MASTER)
 	{
-		ser_init(&ser, SER_UART1);
+		ser_init(&ser, SER_UART3);
 		ser_setbaudrate(&ser, 38400);
 	}
 
@@ -131,29 +132,22 @@ int main(void)
 	{
 		if (id == RADIO_MASTER)
 		{
-			nmea_poll(&nmea, &ser.fd);
-
-			if ((ret = radio_recv(&beacon, sizeof(beacon), -1)) > 0)
+			if ((ret = radio_recv(&tmp, sizeof(tmp), -1)) > 0)
 			{
 				uint8_t lqi = radio_lqi();
 				if (lqi & BV(7))
-					kprintf("%0lx;%ld;%d;%d;%d.%d;%d.%d;\n", beacon.code, beacon.count, radio_rssi(), lqi & ~BV(7),
-						 beacon.temp / 100, beacon.temp % 100,
-						 beacon.vref / 1000, beacon.vref % 1000);
+					kprintf("ricevo: [%s]\n", tmp);
 			}
 
-			memset(&beacon, 0, sizeof(struct Beacon));
+			memset(&tmp, 0, sizeof(tmp));
 		}
 		else
 		{
-			beacon.temp = hw_readIntTemp();
-			beacon.vref = hw_readVrefint();
-			radio_send(&beacon, sizeof(beacon));
-
+			size_t len = kfile_gets(&ser.fd, tmp, sizeof(tmp));
+			kfile_write(&ser.fd, tmp, len);
+			radio_send(&tmp, len);
 			radio_sleep();
-			beacon.count++;
-
-			timer_delay(5000);
+			timer_delay(500);
 		}
 	}
 
