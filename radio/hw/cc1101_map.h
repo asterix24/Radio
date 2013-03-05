@@ -35,54 +35,18 @@
  * \author Daniele Basile <asterix@develer.com>
  */
 
-#ifndef HW_CC1101_H
-#define HW_CC1101_H
+#ifndef HW_CC1101_MAP_H
+#define HW_CC1101_MAP_H
 
-#include <cfg/macros.h>
-
-#include <io/stm32.h>
 #include <cpu/types.h>
-#include <cpu/power.h>
 
-#include <drv/gpio_stm32.h>
-#include <drv/cc1101.h>
-
-#define GPIO_BASE_A       ((struct stm32_gpio *)GPIOA_BASE)
-#define GPIO_BASE_B       ((struct stm32_gpio *)GPIOB_BASE)
-
-/*
- * Radio ids table.
- */
-#define RADIO_MASTER    0
-
-/*
- * Radio errors
- */
-#define RADIO_TX_ERR        -1
-#define RADIO_RX_ERR        -2
-#define RADIO_RX_TIMEOUT    -3
-
-/*
- * Get the device id
- */
-INLINE uint8_t radio_id(void)
+typedef struct Setting
 {
-	return stm32_gpioPinRead(GPIO_BASE_B, BV(5) | BV(6)) >> 5;
-}
+	uint8_t addr; // Address of cc1101 registry setting.
+	uint8_t data; // Value of the register.
+} Setting;
 
-int radio_send(const void *buf, size_t len);
-int radio_recv(void *buf, size_t len, mtime_t timeout);
-uint8_t radio_status(void);
-void radio_sleep(void);
-int radio_rssi(void);
-int radio_lqi(void);
+extern const Setting ping_low_baud_868[];
 
 
-#define CC1101_HW_INIT() \
-do { \
-	RCC->APB2ENR |= RCC_APB2_GPIOB;			\
-	stm32_gpioPinConfig(GPIO_BASE, BV(11), GPIO_MODE_IN_FLOATING, GPIO_SPEED_50MHZ); \
-	stm32_gpioPinConfig(GPIO_BASE_B, BV(5) | BV(6), GPIO_MODE_IPU, GPIO_SPEED_50MHZ); \
-} while (0)
-
-#endif /* HW_CC1101_H */
+#endif /* HW_CC1101_MAP_H */

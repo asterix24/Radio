@@ -11,6 +11,7 @@ radio_PROGRAMMER_PORT = none
 radio_USER_CSRC = \
 	$(radio_SRC_PATH)/main.c \
 	$(radio_SRC_PATH)/hw/hw_cc1101.c \
+	$(radio_SRC_PATH)/hw/cc1101_map.c \
 	#
 
 # Files included by the user.

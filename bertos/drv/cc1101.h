@@ -159,14 +159,10 @@
 	STATUS_STATE(status), \
 	STATUS_FIFO_AVAIL(status)
 
+#include "hw/cc1101_map.h"
+
 #include <cpu/types.h>
 
-
-typedef struct Setting
-{
-	uint8_t addr; // Address of cc1101 registry setting.
-	uint8_t data; // Value of the register.
-} Setting;
 
 
 /*
