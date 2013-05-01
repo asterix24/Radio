@@ -198,21 +198,18 @@ uint8_t tmp_buf[256];
 
 int radio_send(const void *buf, size_t len)
 {
-	uint8_t status;
+	uint8_t status = radio_status();
 
-	if (!radio_waitIdle(CC1101_WAIT_IDLE_TIMEOUT))
+	if (STATUS_STATE(status) == CC1101_STATUS_TX_FIFOUNFLOW)
 	{
+		//Flush the data in the fifo
+		status = cc1101_strobe(CC1101_SFTX);
 		radio_goIdle();
-		LOG_ERR("Tx radio not in idle..\n");
+		LOG_INFO("TX unflow: St[%d] goIdle\n", STATUS_STATE(status));
 		return RADIO_TX_ERR;
 	}
 
-	//Flush the data in the fifo
-	status = cc1101_strobe(CC1101_SFTX);
-	LOG_INFO("FlushTx: Rdy[%d] St[%d] FifoAvail[%d]\n", UNPACK_STATUS(status));
-
 	memset(tmp_buf, 0, sizeof(tmp_buf));
-
 	// We reserve one byte for package len
 	size_t tx_len = MIN(sizeof(tmp_buf) - 1, len + 1);
 
