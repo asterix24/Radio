@@ -71,6 +71,7 @@ static void init(void)
 	cc1101_init(ping_low_baud_868);
 }
 
+uint8_t tmp[100];
 int main(void)
 {
 	init();
@@ -80,6 +81,7 @@ int main(void)
 
 	beacon.code = 0xdbf1;
 	beacon.count = 0;
+	memset(tmp,0x61,sizeof(tmp));
 
 	kprintf("%s [%d]\n", id == RADIO_MASTER ? "MASTER" : "SLAVE", id);
 	while (1)
@@ -87,13 +89,13 @@ int main(void)
 
 		if (id == RADIO_MASTER)
 		{
-			if ((ret = radio_recv(&beacon, sizeof(beacon), -1)) > 0)
+			if ((ret = radio_recv(&tmp, 70, -1)) > 0)
 			{
 				uint8_t lqi = radio_lqi();
+				tmp[99] = 0;
 				if (lqi & BV(7))
-					kprintf("%0lx;%ld;%d;%d;%d.%d;%d.%d;\n", beacon.code, beacon.count, radio_rssi(), lqi & ~BV(7),
-						 beacon.temp / 100, beacon.temp % 100,
-						 beacon.vref / 1000, beacon.vref % 1000);
+					kprintf("%d [%s]\n", ret, tmp);
+
 			}
 
 			rssi = 0;
@@ -101,14 +103,13 @@ int main(void)
 		}
 		else
 		{
-			beacon.temp = hw_readIntTemp();
-			beacon.vref = hw_readVrefint();
-			radio_send(&beacon, sizeof(beacon));
+			radio_send(&tmp, 63);
+			timer_delay(1000);
+			radio_send(&tmp, 64);
+			timer_delay(1000);
+			radio_send(&tmp, 65);
+			timer_delay(1000);
 
-			radio_sleep();
-			beacon.count++;
-
-			timer_delay(5000);
 		}
 	}
 
