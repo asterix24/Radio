@@ -89,12 +89,16 @@ int main(void)
 
 		if (id == RADIO_MASTER)
 		{
-			if ((ret = radio_recv(&tmp, 70, -1)) > 0)
+			if ((ret = radio_recv(&tmp, sizeof(tmp), -1)) > 0)
 			{
 				uint8_t lqi = radio_lqi();
-				tmp[99] = 0;
 				if (lqi & BV(7))
+				{
+					if (ret > 99)
+						ret = 99;
+					tmp[ret + 1] = '\0';
 					kprintf("%d [%s]\n", ret, tmp);
+				}
 
 			}
 
@@ -103,13 +107,12 @@ int main(void)
 		}
 		else
 		{
-			radio_send(&tmp, 63);
-			timer_delay(1000);
-			radio_send(&tmp, 64);
-			timer_delay(1000);
-			radio_send(&tmp, 65);
-			timer_delay(1000);
-
+			for (int i = 1; i < 64; i++)
+			{
+				kprintf("%d\n", i);
+				radio_send(&tmp, i);
+				timer_delay(500);
+			}
 		}
 	}
 

@@ -199,8 +199,10 @@ int radio_send(const void *buf, size_t len)
 	memset(tmp_buf, 0, sizeof(tmp_buf));
 	// We reserve one byte for package len
 	size_t tx_len = MIN(sizeof(tmp_buf) - 1, len + 1);
+
 	tmp_buf[0] = tx_len - 1;
 	memcpy(&tmp_buf[1], buf, tx_len);
+	LOG_ERR("TxData[%d]\n", tmp_buf[0]);
 
 	cc1101_write(CC1101_TXFIFO, tmp_buf, tx_len);
 
@@ -214,7 +216,7 @@ int radio_send(const void *buf, size_t len)
 		return RADIO_TX_ERR;
 	}
 
-	LOG_INFO("TxData: Rdy[%d] St[%d] FifoAvail[%d] TxLen[%d]\n", UNPACK_STATUS(status), tx_len);
+	//LOG_ERR("TxData: TxLen[%d]\n", tx_len);
 
 	return tx_len;
 }
@@ -248,7 +250,17 @@ int radio_recv(void *buf, size_t len, mtime_t timeout)
 
 	size_t rx_len = MIN((size_t)rx_data, len);
 	cc1101_read(CC1101_RXFIFO, buf, rx_len);
-	LOG_ERR("RxLen[%d]\n", rx_data);
+	LOG_ERR("RxLen[%d]\n", rx_len);
+
+	status = radio_status();
+	if (STATUS_STATE(status) == CC1101_STATUS_RX_FIFOUNFLOW)
+	{
+		//Flush the data in the fifo
+		status = cc1101_strobe(CC1101_SFRX);
+		radio_goIdle();
+		LOG_ERR("RX unflow: St[%d] goIdle\n", STATUS_STATE(status));
+		return RADIO_RX_ERR;
+	}
 
 	return rx_len;
 }

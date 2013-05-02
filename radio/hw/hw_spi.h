@@ -77,7 +77,7 @@
 #define SCK_PULSE()\
 	do {\
 			SCK_ACTIVE();\
-			timer_udelay(1);\
+			NOP;NOP;NOP;NOP; \
 			SCK_INACTIVE();\
 	} while (0)
 
