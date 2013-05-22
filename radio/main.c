@@ -60,11 +60,34 @@ struct Beacon
 };
 static struct Beacon beacon;
 
+#define GPIO_BASE       ((struct stm32_gpio *)GPIOA_BASE)
+
 static void init(void)
 {
 	IRQ_ENABLE;
 	kdbg_init();
 	timer_init();
+
+	RCC->APB2ENR |= RCC_APB2_GPIOA;
+
+	while(1)
+	{
+		GPIO_BASE->CRL = (1 << (3 *4+2));
+		GPIO_BASE->CRL = (0 << (3 *4+2)) | (1 << (3 *4));
+		GPIO_BASE->BRR = (1 << (3));
+
+		GPIO_BASE->CRL = (2 << (3 *4+2));
+		GPIO_BASE->BSRR = (1 << (3));
+
+		int i;
+		for (i = 0; (GPIO_BASE->IDR & BV(3)) == 0; i++)
+		{
+		}
+		kprintf("%d\n", i);
+		timer_delay(1000);
+	}
+
+
 	spi_init();
 	adc_init();
 
