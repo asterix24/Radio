@@ -45,13 +45,19 @@
 
 #include <cfg/macros.h>
 
-#warning TODO:This is an example implementation, you must implement it!
+#include <io/stm32.h>
+
+#include <drv/gpio_stm32.h>
+#include <drv/clock_stm32.h>
+#include <drv/timer.h>
 
 #define K_RPT_MASK (K_UP | K_DOWN | K_OK | K_CANCEL)
 
+#define GPIO_BASE       ((struct stm32_gpio *)GPIOA_BASE)
+
 #define KBD_HW_INIT \
 	do { \
-			/* Put here code to init hw */ \
+	RCC->APB2ENR |= RCC_APB2_GPIOA; \
 	} while (0)
 
 EXTERN_C int emul_kbdReadCols(void);
@@ -62,9 +68,24 @@ EXTERN_C int emul_kbdReadCols(void);
  */
 INLINE keymask_t kbd_readkeys(void)
 {
-	/* Implement me! */
+	//GPIO_BASE->CRL = (1 << (3 *4+2));
+	GPIO_BASE->CRL = (3 << (3 *4));
+	GPIO_BASE->BSRR = (1 << (3));
+	NOP;NOP;NOP;NOP;
+	NOP;NOP;NOP;NOP;
+	NOP;NOP;NOP;NOP;
+	NOP;NOP;NOP;NOP;
+	NOP;NOP;NOP;NOP;
 
-	//Only for test remove when implement this function
+	GPIO_BASE->CRL = (1 << (3 *4+2));
+
+	int i;
+	for (i = 0; (GPIO_BASE->IDR & BV(3)) != 0; i++)
+	{
+	}
+	if (i > 40)
+		return K_OK;
+
 	return 0;
 }
 
