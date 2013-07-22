@@ -41,8 +41,10 @@
 #ifndef SPI_STM32_H
 #define SPI_STM32_H
 
-uint8_t stm32_spiInit(void);
+void stm32_spiInit(void);
 uint8_t stm32_sendRecv(uint8_t c);
+void spi_read(void *_buff, size_t len);
+void spi_write(const void *_buff, size_t len);
 
 #endif
 

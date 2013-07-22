@@ -45,19 +45,72 @@
 
 #include <io/stm32.h>
 #include <drv/clock_stm32.h>
+#include <drv/gpio_stm32.h>
+
+#define GPIO_BASE       ((struct stm32_gpio *)GPIOA_BASE)
+/**
+ * SPI pin definition.
+ */
+#define CS       BV(4)  //PA4
+#define SCK      BV(5)  //PA5
+#define MOSI     BV(7)  //PA7
+#define MISO     BV(6)  //PA6
+#define STROBE   BV(0)  //PA0
+/*\}*/
 
 
-uint8_t stm32_spiInit(void)
+
+#define SS_ACTIVE()      stm32_gpioPinWrite(GPIO_BASE, CS, 0)
+#define SS_INACTIVE()    stm32_gpioPinWrite(GPIO_BASE, CS, 1)
+
+void stm32_spiInit(void)
 {
-	RCC->APB2ENR |= RCC_APB2_SPI1;
+	RCC->APB2ENR |= RCC_APB2_GPIOA | RCC_APB2_SPI1;
+
+	stm32_gpioPinWrite(GPIO_BASE, CS, 1);
+	stm32_gpioPinConfig(GPIO_BASE, CS, GPIO_MODE_OUT_PP, GPIO_SPEED_50MHZ);
+
 	/* MSB, Baudrate=6MHz MASTER, spi en */
-	SPI1->CR1 |= (0x1 << 3) | SPI_CR1_MSTR | SPI_CR1_SPE;
+	SPI1->CR1 = SPI_CR1_MSTR | SPI_CR1_SSM | SPI_CR1_SSI | (0x8) | SPI_CR1_SPE | 0x0200;
+	SPI1->CR2 = SPI_CR2_SSOE;
+	SPI1->I2SCFGR &= ~SPI_I2SCFGR_I2SMOD;
+	stm32_gpioPinConfig(GPIO_BASE, SCK | MOSI | MISO, GPIO_MODE_AF_PP, GPIO_SPEED_50MHZ);
 }
 
 uint8_t stm32_sendRecv(uint8_t c)
 {
-	SPI1->DR = c;
-	return (uint8_t)SPI1->DR;
+	uint8_t ch;
+	SPI1->DR = (uint8_t)c;
+	while (!(SPI1->SR & SPI_SR_TXE));
+
+	while (!(SPI1->SR & SPI_SR_RXNE));
+	ch = (uint8_t)SPI1->DR;
+
+	return ch;
 }
 
+/**
+ * Read \param len from spi, and put it in \param _buff .
+ */
+void spi_read(void *_buff, size_t len)
+{
+	uint8_t *buff = (uint8_t *)_buff;
+
+	while (len--)
+		/* Read byte from spi and put it in buffer. */
+		*buff++ = stm32_sendRecv(0);
+
+}
+
+/**
+ * Write \param len to spi, and take it from \param _buff .
+ */
+void spi_write(const void *_buff, size_t len)
+{
+	const uint8_t *buff = (const uint8_t *)_buff;
+
+	while (len--)
+		/* Write byte pointed at by *buff to spi */
+		stm32_sendRecv(*buff++);
+}
 
