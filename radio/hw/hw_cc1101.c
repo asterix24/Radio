@@ -196,6 +196,9 @@ int radio_send(const void *buf, size_t len)
 		return RADIO_TX_ERR;
 	}
 
+	cc1101_strobe(CC1101_SFTX);
+	status = cc1101_strobe(CC1101_STX);
+
 	memset(tmp_buf, 0, sizeof(tmp_buf));
 	// We reserve one byte for package len
 	size_t tx_len = MIN(sizeof(tmp_buf) - 1, len + 1);
@@ -206,7 +209,6 @@ int radio_send(const void *buf, size_t len)
 
 	cc1101_write(CC1101_TXFIFO, tmp_buf, tx_len);
 
-	status = cc1101_strobe(CC1101_STX);
 	if (STATUS_STATE(status) == CC1101_STATUS_TX_FIFOUNFLOW)
 	{
 		//Flush the data in the fifo
@@ -224,6 +226,7 @@ int radio_send(const void *buf, size_t len)
 int radio_recv(void *buf, size_t len, mtime_t timeout)
 {
 	uint8_t status = radio_status();
+	cc1101_strobe(CC1101_SFRX);
 
 	if (STATUS_STATE(status) == CC1101_STATUS_RX_FIFOUNFLOW)
 	{

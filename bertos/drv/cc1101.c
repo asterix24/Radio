@@ -36,6 +36,7 @@
  */
 
 #include "cc1101.h"
+#include <radio/spi_stm32.h>
 
 #include "hw/hw_cc1101.h"
 #include "hw/hw_spi.h"
@@ -69,7 +70,7 @@ uint8_t cc1101_read(uint8_t addr, uint8_t *buf, size_t len)
 
 	uint8_t status = 0xFF;
 
-	status = spi_sendRecv(addr | 0xc0);
+	status = stm32_sendRecv(addr | 0xc0);
 	spi_read(buf, len);
 
 	SS_INACTIVE();
@@ -89,12 +90,12 @@ uint8_t cc1101_write(uint8_t addr, const uint8_t *buf, size_t len)
 	uint8_t status = 0xFF;
 	if (len == 1)
 	{
-		spi_sendRecv(addr);
-		status = spi_sendRecv(buf[0]);
+		stm32_sendRecv(addr);
+		status = stm32_sendRecv(buf[0]);
 	}
 	else
 	{
-		status = spi_sendRecv(addr | 0x40);
+		status = stm32_sendRecv(addr | 0x40);
 		spi_write(buf, len);
 	}
 
@@ -112,7 +113,7 @@ uint8_t cc1101_strobe(uint8_t addr)
 	SS_ACTIVE();
 	WAIT_SO_LOW();
 
-    uint8_t status = spi_sendRecv(addr);
+    uint8_t status = stm32_sendRecv(addr);
 
 	SS_INACTIVE();
     return status;
@@ -149,10 +150,10 @@ void cc1101_powerOnReset(void)
  */
 void cc1101_init(const Setting  *settings)
 {
-	CC1101_HW_INIT();
-	
+//	CC1101_HW_INIT();
+
 	cc1101_powerOnReset();
-	
+
 	for (int i = 0; settings[i].addr != 0xFF && settings[i].data != 0xFF; i++)
 	{
 		cc1101_write(settings[i].addr, &settings[i].data, sizeof(uint8_t));

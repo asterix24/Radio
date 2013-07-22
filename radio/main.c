@@ -35,6 +35,8 @@
  * \author Daniele Basile <asterix@develer.com>
  */
 
+#include "spi_stm32.h"
+
 #include "hw/hw_cc1101.h"
 #include "hw/hw_spi.h"
 #include "hw/hw_adc.h"
@@ -47,19 +49,11 @@
 
 #include <drv/timer.h>
 #include <drv/adc.h>
-#include <drv/spi_bitbang.h>
-#include <drv/kbd.h>
+#include <drv/cc1101.h>
+
+#include <io/stm32.h>
 
 #include <string.h>
-
-struct Beacon
-{
-	uint32_t count;
-	uint32_t code;
-	uint16_t temp;
-	uint16_t vref;
-};
-static struct Beacon beacon;
 
 
 static void init(void)
@@ -67,19 +61,10 @@ static void init(void)
 	IRQ_ENABLE;
 	kdbg_init();
 	timer_init();
-	kbd_init();
 
+	//spi_init();
+	stm32_spiInit();
 
-	int i = 0;
-	while(1)
-	{
-		kbd_get();
-		i++;
-		kprintf("Tasto premuto %d volte!\n", i);
-	}
-
-
-	spi_init();
 	adc_init();
 
 	cc1101_init(ping_low_baud_868);
@@ -93,8 +78,6 @@ int main(void)
 	int id = radio_id();
 	int rssi;
 
-	beacon.code = 0xdbf1;
-	beacon.count = 0;
 	memset(tmp,0x61,sizeof(tmp));
 
 	kprintf("%s [%d]\n", id == RADIO_MASTER ? "MASTER" : "SLAVE", id);
@@ -117,7 +100,6 @@ int main(void)
 			}
 
 			rssi = 0;
-			memset(&beacon, 0, sizeof(struct Beacon));
 		}
 		else
 		{
