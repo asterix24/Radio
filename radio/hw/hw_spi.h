@@ -59,37 +59,39 @@
 
 /*\}*/
 
-
-#define STROBE_ON()      stm32_gpioPinWrite(GPIO_BASE, STROBE, 1)
-#define STROBE_OFF()     stm32_gpioPinWrite(GPIO_BASE, STROBE, 0)
-
-#define MOSI_LOW()       stm32_gpioPinWrite(GPIO_BASE, MOSI, 0)
-#define MOSI_HIGH()      stm32_gpioPinWrite(GPIO_BASE, MOSI, 1)
-
 #define SS_ACTIVE()      stm32_gpioPinWrite(GPIO_BASE, CS, 0)
 #define SS_INACTIVE()    stm32_gpioPinWrite(GPIO_BASE, CS, 1)
 
-#define SCK_INACTIVE()   stm32_gpioPinWrite(GPIO_BASE, SCK, 0)
-#define SCK_ACTIVE()     stm32_gpioPinWrite(GPIO_BASE, SCK, 1)
 
-#define IS_MISO_HIGH()	 stm32_gpioPinRead(GPIO_BASE, MISO)
+INLINE void  SPI_HW_SCK_ACTIVE(void)
+{
+	stm32_gpioPinConfig(GPIO_BASE, SCK, GPIO_MODE_OUT_PP, GPIO_SPEED_50MHZ);
+	stm32_gpioPinWrite(GPIO_BASE, SCK, 1);
+	stm32_gpioPinConfig(GPIO_BASE, SCK | MOSI | MISO, GPIO_MODE_AF_PP, GPIO_SPEED_50MHZ);
+}
 
-#define SCK_PULSE()\
-	do {\
-			SCK_ACTIVE();\
-			NOP;NOP;NOP;NOP; \
-			SCK_INACTIVE();\
-	} while (0)
+INLINE void SPI_HW_MOSI_LOW(void)
+{
+	stm32_gpioPinConfig(GPIO_BASE, MOSI, GPIO_MODE_OUT_PP, GPIO_SPEED_50MHZ);
+	stm32_gpioPinWrite(GPIO_BASE, MOSI, 0);
+	stm32_gpioPinConfig(GPIO_BASE, SCK | MOSI | MISO, GPIO_MODE_AF_PP, GPIO_SPEED_50MHZ);
+}
 
+INLINE bool SPI_HW_IS_MISO_HIGH(void)
+{
+	stm32_gpioPinConfig(GPIO_BASE, MISO, GPIO_MODE_IN_FLOATING, GPIO_SPEED_50MHZ);
+	bool miso = stm32_gpioPinRead(GPIO_BASE, MISO);
+	stm32_gpioPinConfig(GPIO_BASE, SCK | MOSI | MISO, GPIO_MODE_AF_PP, GPIO_SPEED_50MHZ);
+	return miso;
+}
 
 #define SPI_HW_INIT() \
 	do { \
 		/* Enable clocking on GPIOA */	\
 		RCC->APB2ENR |= RCC_APB2_GPIOA;			\
-		stm32_gpioPinWrite(GPIO_BASE, CS | SCK, 1); \
-		stm32_gpioPinWrite(GPIO_BASE, MOSI | STROBE, 0); \
-		stm32_gpioPinConfig(GPIO_BASE, CS | SCK | MOSI | STROBE, GPIO_MODE_OUT_PP, GPIO_SPEED_50MHZ); \
-		stm32_gpioPinConfig(GPIO_BASE, MISO, GPIO_MODE_IN_FLOATING, GPIO_SPEED_50MHZ); \
+		stm32_gpioPinWrite(GPIO_BASE, CS, 1); \
+		stm32_gpioPinConfig(GPIO_BASE, CS, GPIO_MODE_OUT_PP, GPIO_SPEED_50MHZ); \
+		stm32_gpioPinConfig(GPIO_BASE, SCK | MOSI | MISO, GPIO_MODE_AF_PP, GPIO_SPEED_50MHZ); \
 	} while(0)
 
 #endif /* HW_SPI_H */

@@ -23,7 +23,6 @@ radio_WIZARD_CSRC = \
 	bertos/cpu/cortex-m3/drv/flash_stm32.c \
 	bertos/cpu/cortex-m3/drv/timer_cm3.c \
 	bertos/drv/adc.c \
-	bertos/drv/kbd.c \
 	bertos/drv/timer.c \
 	bertos/io/kblock.c \
 	bertos/io/kfile.c \

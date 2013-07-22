@@ -27,39 +27,49 @@
  * the GNU General Public License.
  *
  * Copyright 2012 Develer S.r.l. (http://www.develer.com/)
- *
+ * All Rights Reserved.
  * -->
  *
- * \brief Configuration file for the CLI module.
+ * \brief BSM-RADIO main.
  *
  * \author Daniele Basile <asterix@develer.com>
  */
 
-#ifndef CFG_CLI_H
-#define CFG_CLI_H
+#include "spi_stm32.h"
 
-/**
- * Module logging level.
- *
- * $WIZ$ type = "enum"
- * $WIZ$ value_list = "log_level"
- */
-#define CLI_LOG_LEVEL      LOG_LVL_INFO
+#include "hw/hw_spi.h"
 
-/**
- * Module logging format.
- *
- * $WIZ$ type = "enum"
- * $WIZ$ value_list = "log_format"
- */
-#define CLI_LOG_FORMAT     LOG_FMT_TERSE
+#include <cfg/debug.h>
+
+#include <cpu/irq.h>
+#include <cpu/types.h>
+#include <cpu/power.h>
+
+#include <io/stm32.h>
+#include <drv/clock_stm32.h>
+#include <drv/spi.h>
 
 
-/**
- * Default promt string.
- *
- * $WIZ$ type = "str"
- */
-#define CONFIG_CLI_PROMT_STR           ">> " " " " " " "
 
-#endif /* CFG_CLI_H */
+uint8_t spi_hw_sendRecv(uint8_t c)
+{
+	uint8_t ch;
+	SPI1->DR = (uint8_t)c;
+	while (!(SPI1->SR & SPI_SR_TXE));
+
+	while (!(SPI1->SR & SPI_SR_RXNE));
+	ch = (uint8_t)SPI1->DR;
+
+	return ch;
+}
+
+void spi_hw_init(void)
+{
+	SPI_HW_INIT();
+	RCC->APB2ENR |= RCC_APB2_SPI1;
+
+	/* MSB, Baudrate=6MHz MASTER, spi en */
+	SPI1->CR1 = SPI_CR1_MSTR | SPI_CR1_SSM | SPI_CR1_SSI | (0x8) | SPI_CR1_SPE;
+	SPI1->CR2 = SPI_CR2_SSOE;
+	SPI1->I2SCFGR &= ~SPI_I2SCFGR_I2SMOD;
+}

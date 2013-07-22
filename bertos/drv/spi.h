@@ -27,39 +27,25 @@
  * the GNU General Public License.
  *
  * Copyright 2012 Develer S.r.l. (http://www.develer.com/)
- *
+ * All Rights Reserved.
  * -->
  *
- * \brief Configuration file for the CLI module.
+ * \brief Spi interface
  *
  * \author Daniele Basile <asterix@develer.com>
  */
 
-#ifndef CFG_CLI_H
-#define CFG_CLI_H
+#ifndef DRV_SPI_H
+#define DRV_SPI_H
 
-/**
- * Module logging level.
- *
- * $WIZ$ type = "enum"
- * $WIZ$ value_list = "log_level"
- */
-#define CLI_LOG_LEVEL      LOG_LVL_INFO
+#include <cpu/types.h>
 
-/**
- * Module logging format.
- *
- * $WIZ$ type = "enum"
- * $WIZ$ value_list = "log_format"
- */
-#define CLI_LOG_FORMAT     LOG_FMT_TERSE
+void spi_read(void *_buff, size_t len);
+void spi_write(const void *_buff, size_t len);
+uint8_t spi_sendRecv(uint8_t c);
+void spi_init(void);
 
+void spi_hw_init(void);
+uint8_t spi_hw_sendRecv(uint8_t c);
+#endif
 
-/**
- * Default promt string.
- *
- * $WIZ$ type = "str"
- */
-#define CONFIG_CLI_PROMT_STR           ">> " " " " " " "
-
-#endif /* CFG_CLI_H */

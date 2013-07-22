@@ -35,10 +35,8 @@
  * \author Daniele Basile <asterix@develer.com>
  */
 
-#include "spi_stm32.h"
 
 #include "hw/hw_cc1101.h"
-#include "hw/hw_spi.h"
 #include "hw/hw_adc.h"
 
 #include <cfg/debug.h>
@@ -50,6 +48,7 @@
 #include <drv/timer.h>
 #include <drv/adc.h>
 #include <drv/cc1101.h>
+#include <drv/spi.h>
 
 #include <io/stm32.h>
 
@@ -62,9 +61,7 @@ static void init(void)
 	kdbg_init();
 	timer_init();
 
-	//spi_init();
-	stm32_spiInit();
-
+	spi_init();
 	adc_init();
 
 	cc1101_init(ping_low_baud_868);

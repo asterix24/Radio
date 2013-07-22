@@ -10,9 +10,10 @@ radio_PROGRAMMER_PORT = none
 # Files included by the user.
 radio_USER_CSRC = \
 	$(radio_SRC_PATH)/main.c \
-	$(radio_SRC_PATH)/spi_stm32.c \
-	$(radio_SRC_PATH)/hw/hw_cc1101.c \
+	bertos/cpu/cortex-m3/drv/spi_stm32.c \
+	bertos/drv/spi.c \
 	bertos/drv/cc1101.c \
+	$(radio_SRC_PATH)/hw/hw_cc1101.c \
 	#
 
 # Files included by the user.

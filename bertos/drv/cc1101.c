@@ -36,7 +36,6 @@
  */
 
 #include "cc1101.h"
-#include <radio/spi_stm32.h>
 
 #include "hw/hw_cc1101.h"
 #include "hw/hw_spi.h"
@@ -45,12 +44,12 @@
 #include <cpu/power.h>
 
 #include <drv/timer.h>
-#include <drv/spi_bitbang.h>
+#include <drv/spi.h>
 
 #define WAIT_SO_LOW()  \
 	do { \
 		ticks_t start = timer_clock(); \
-		while(IS_MISO_HIGH()) \
+		while(SPI_HW_IS_MISO_HIGH()) \
 		{ \
 			if (timer_clock() - start > ms_to_ticks(CC1101_TIMEOUT_ERR)) \
 				break; \
@@ -70,7 +69,7 @@ uint8_t cc1101_read(uint8_t addr, uint8_t *buf, size_t len)
 
 	uint8_t status = 0xFF;
 
-	status = stm32_sendRecv(addr | 0xc0);
+	status = spi_sendRecv(addr | 0xc0);
 	spi_read(buf, len);
 
 	SS_INACTIVE();
@@ -90,12 +89,12 @@ uint8_t cc1101_write(uint8_t addr, const uint8_t *buf, size_t len)
 	uint8_t status = 0xFF;
 	if (len == 1)
 	{
-		stm32_sendRecv(addr);
-		status = stm32_sendRecv(buf[0]);
+		spi_sendRecv(addr);
+		status = spi_sendRecv(buf[0]);
 	}
 	else
 	{
-		status = stm32_sendRecv(addr | 0x40);
+		status = spi_sendRecv(addr | 0x40);
 		spi_write(buf, len);
 	}
 
@@ -113,7 +112,7 @@ uint8_t cc1101_strobe(uint8_t addr)
 	SS_ACTIVE();
 	WAIT_SO_LOW();
 
-    uint8_t status = stm32_sendRecv(addr);
+    uint8_t status = spi_sendRecv(addr);
 
 	SS_INACTIVE();
     return status;
@@ -125,8 +124,8 @@ uint8_t cc1101_strobe(uint8_t addr)
  */
 void cc1101_powerOnReset(void)
 {
-	SCK_ACTIVE();
-	MOSI_LOW();
+	SPI_HW_SCK_ACTIVE();
+	SPI_HW_MOSI_LOW();
 	timer_udelay(10);
 
 	SS_INACTIVE();
