@@ -208,6 +208,7 @@
 
 	#if defined (__ARM_STM32F100RB__)
 		#define CPU_CM3_STM32       1
+		#define CPU_CM3_STM32F1     1
 		#define CPU_CM3_STM32F100RB 1
 		#define CPU_NAME            "STM32F100RB"
 	#else
@@ -216,6 +217,7 @@
 
 	#if defined (__ARM_STM32F100C4__)
 		#define CPU_CM3_STM32       1
+		#define CPU_CM3_STM32F1     1
 		#define CPU_CM3_STM32F100C4 1
 		#define CPU_NAME            "STM32F100C4"
 	#else
@@ -224,6 +226,7 @@
 
 	#if defined (__ARM_STM32F101C4__)
 		#define CPU_CM3_STM32       1
+		#define CPU_CM3_STM32F1     1
 		#define CPU_CM3_STM32F101C4 1
 		#define CPU_NAME            "STM32F101C4"
 	#else
@@ -232,6 +235,7 @@
 
 	#if defined (__ARM_STM32F102C4__)
 		#define CPU_CM3_STM32       1
+		#define CPU_CM3_STM32F1     1
 		#define CPU_CM3_STM32F102C4 1
 		#define CPU_NAME            "STM32F102C4"
 	#else
@@ -240,6 +244,7 @@
 
 	#if defined (__ARM_STM32F103RB__)
 		#define CPU_CM3_STM32       1
+		#define CPU_CM3_STM32F1     1
 		#define CPU_CM3_STM32F103RB 1
 		#define CPU_NAME            "STM32F103RB"
 	#else
@@ -249,9 +254,28 @@
 	#if defined (__ARM_STM32F103RE__)
 		#define CPU_CM3_STM32       1
 		#define CPU_CM3_STM32F103RE 1
+		#define CPU_CM3_STM32F1     1
 		#define CPU_NAME            "STM32F103RE"
 	#else
 		#define CPU_CM3_STM32F103RE 0
+	#endif
+
+	#if defined (__ARM_STM32F207ZG__)
+		#define CPU_CM3_STM32       1
+		#define CPU_CM3_STM32F207ZG 1
+		#define CPU_CM3_STM32F2     1
+		#define CPU_NAME            "STM32F207ZG"
+	#else
+		#define CPU_CM3_STM32F207ZG 0
+	#endif
+
+	#if defined (__ARM_STM32F207IG__)
+		#define CPU_CM3_STM32       1
+		#define CPU_CM3_STM32F207IG 1
+		#define CPU_CM3_STM32F2     1
+		#define CPU_NAME            "STM32F207IG"
+	#else
+		#define CPU_CM3_STM32F207IG 0
 	#endif
 
 
@@ -324,6 +348,18 @@
 			CPU_CM3_STM32F102C4 + CPU_CM3_STM32F207IG + CPU_CM3_STM32F207ZG + 0 != 1
 			#error STM32 Cortex-M3 CPU configuration error
 		#endif
+
+		#ifdef CPU_CM3_STM32F1
+			#ifndef CPU_CM3_STM32F2
+				#define CPU_CM3_STM32F2     0
+			#endif
+		#endif
+		#ifdef CPU_CM3_STM32F2
+			#ifndef CPU_CM3_STM32F1
+				#define CPU_CM3_STM32F1     0
+			#endif
+		#endif
+
 		#define CPU_CM3_LM3S        0
 		#define CPU_CM3_SAM3        0
 	#elif defined (CPU_CM3_SAM3)
