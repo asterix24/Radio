@@ -13,7 +13,7 @@ radio_USER_CSRC = \
 	bertos/cpu/cortex-m3/drv/spi_stm32.c \
 	bertos/drv/spi.c \
 	bertos/drv/cc1101.c \
-	$(radio_SRC_PATH)/hw/hw_cc1101.c \
+	$(radio_SRC_PATH)/radio_cc1101.c \
 	#
 
 # Files included by the user.

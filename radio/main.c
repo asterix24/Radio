@@ -36,6 +36,8 @@
  */
 
 
+#include "radio_cc1101.h"
+
 #include "hw/hw_cc1101.h"
 #include "hw/hw_adc.h"
 

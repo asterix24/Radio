@@ -35,7 +35,9 @@
  * \author Daniele Basile <asterix@develer.com>
  */
 
-#include "hw_cc1101.h"
+#include "radio_cc1101.h"
+
+#include "hw/hw_cc1101.h"
 
 #include "cfg/cfg_cc1101.h"
 
