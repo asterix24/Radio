@@ -104,7 +104,7 @@ int main(void)
 			{
 				kprintf("%d\n", i);
 				radio_send(&tmp, i);
-				timer_delay(500);
+				timer_delay(1000);
 			}
 		}
 	}
