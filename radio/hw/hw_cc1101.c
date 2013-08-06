@@ -96,27 +96,26 @@ const Setting ping_low_baud_868[] =
 
 
 
-static bool wait_fifo_avail(mtime_t timeout)
+static bool wait_fifoAvail(mtime_t timeout)
 {
-	kputs("w1\n");
-	if (timeout == -1)
+	uint8_t status;
+	ticks_t start = timer_clock();
+	do
 	{
-		kputs("w2\n");
-		while (!stm32_gpioPinRead(GPIO_BASE_A, BV(11)))
+		status = cc1101_strobe(CC1101_SNOP);
+		LOG_INFO("Idle: Rdy[%d] St[%d] FifoAvail[%d]\n", UNPACK_STATUS(status));
+
+		if (timeout == -1)
+		{
 			cpu_relax();
-	}
-	else
-	{
-		kputs("w3\n");
-		ticks_t start = timer_clock();
-		while (!stm32_gpioPinRead(GPIO_BASE_A, BV(11)))
+		}
+		else
 		{
 			if (timer_clock() - start > ms_to_ticks(timeout))
 				return false;
-
-			cpu_relax();
 		}
-	}
+
+	} while (!stm32_gpioPinRead(GPIO_BASE_A, BV(11)));
 
 	return true;
 }
@@ -188,7 +187,7 @@ uint8_t tmp_buf[65];
 
 int radio_send(const void *buf, size_t len)
 {
-	radio_waitIdle(100);
+	radio_waitIdle(-1);
 	cc1101_strobe(CC1101_SFTX);
 	uint8_t status = cc1101_strobe(CC1101_STX);
 
@@ -198,62 +197,42 @@ int radio_send(const void *buf, size_t len)
 
 	tmp_buf[0] = tx_len - 1;
 	memcpy(&tmp_buf[1], buf, tx_len);
-	LOG_ERR("TxData[%d]\n", tmp_buf[0]);
+	status = cc1101_write(CC1101_TXFIFO, tmp_buf, tx_len);
+	LOG_INFO("TxData[%d] s[%d]\n", tmp_buf[0], STATUS_STATE(status));
 
-	cc1101_write(CC1101_TXFIFO, tmp_buf, tx_len);
-
-	if (STATUS_STATE(status) == CC1101_STATUS_TX_FIFOUNFLOW)
-	{
-		//Flush the data in the fifo
-		status = cc1101_strobe(CC1101_SFTX);
-		radio_goIdle();
-		LOG_ERR("TX unflow: St[%d] goIdle\n", STATUS_STATE(status));
-		return RADIO_TX_ERR;
-	}
-
-	//LOG_ERR("TxData: TxLen[%d]\n", tx_len);
+	radio_waitIdle(-1);
+	status = cc1101_strobe(CC1101_SFTX);
+	LOG_INFO("Tx: s1[%d]\n", STATUS_STATE(status));
 
 	return tx_len;
 }
 
 int radio_recv(void *buf, size_t len, mtime_t timeout)
 {
-	kputs("00\n");
-	radio_waitIdle(100);
+	radio_waitIdle(-1);
+	cc1101_strobe(CC1101_SFRX);
 	uint8_t status = cc1101_strobe(CC1101_SRX);
 	LOG_INFO("RxData: Rdy[%d] St[%d] FifoAvail[%d]\n", UNPACK_STATUS(status));
-	kputs("22\n");
 
 	// Waiting data from air..
-	if (!wait_fifo_avail(1000))
+	if (!wait_fifoAvail(timeout))
 	{
 		radio_goIdle();
-		cc1101_strobe(CC1101_SRX);
+		cc1101_strobe(CC1101_SFRX);
 		LOG_ERR("Rx timeout..\n");
 		return RADIO_RX_TIMEOUT;
 	}
-	kputs("33\n");
-
 
 	uint8_t rx_data;
 	cc1101_read(CC1101_RXFIFO, &rx_data, 1);
 
 	size_t rx_len = MIN((size_t)rx_data, len);
-	cc1101_read(CC1101_RXFIFO, buf, rx_len);
-	LOG_ERR("RxLen[%d] [%d]\n", rx_len, len);
+	status = cc1101_read(CC1101_RXFIFO, buf, rx_len);
+	LOG_INFO("RxLen[%d] [%d] s[%d]\n", rx_len, len, STATUS_STATE(status));
 
-	kputs("0\n");
-	status = radio_status();
-	kputs("1\n");
-	if (STATUS_STATE(status) == CC1101_STATUS_RX_FIFOUNFLOW)
-	{
-		//Flush the data in the fifo
-		status = cc1101_strobe(CC1101_SFRX);
-		radio_goIdle();
-		LOG_ERR("RX unflow: St[%d] goIdle\n", STATUS_STATE(status));
-		return RADIO_RX_ERR;
-	}
-	kputs("---\n");
+	radio_waitIdle(-1);
+	status = cc1101_strobe(CC1101_SFRX);
+	LOG_INFO("Rx: s1[%d]\n", STATUS_STATE(status));
 
 	return rx_len;
 }
