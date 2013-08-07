@@ -41,11 +41,41 @@
 #include <cfg/macros.h>
 
 #include <io/stm32.h>
+#include <io/kfile.h>
+
 #include <cpu/types.h>
 #include <cpu/power.h>
 
+#include <drv/timer.h>
 #include <drv/gpio_stm32.h>
 #include <drv/cc1101.h>
+
+/**
+ * Radio KFile context structure.
+ */
+typedef struct Radio
+{
+	KFile fd; ///< File descriptor.
+	mtime_t recv_timeout;
+	uint8_t status;
+	uint8_t lqi;  ///< Link quality descriptor.
+	uint8_t rssi; ///< Received Signal Strength Indication.
+} Radio;
+
+/**
+ * ID for dataflash.
+ */
+#define KFT_RADIO MAKE_ID('R', 'A', 'D', 'I')
+
+
+/**
+ * Convert + ASSERT from generic KFile to Radio.
+ */
+INLINE Radio * RADIO_CAST(KFile *fd)
+{
+	ASSERT(fd->_type == KFT_RADIO);
+	return (Radio *)fd;
+}
 
 extern const Setting ping_low_baud_868[];
 
@@ -58,11 +88,12 @@ extern const Setting ping_low_baud_868[];
 #define RADIO_RX_TIMEOUT    -3
 
 
-int radio_send(const void *buf, size_t len);
-int radio_recv(void *buf, size_t len, mtime_t timeout);
-uint8_t radio_status(void);
 void radio_sleep(void);
-int radio_rssi(void);
-int radio_lqi(void);
+INLINE void radio_timeout(Radio *fd, mtime_t timeout)
+{
+	fd->recv_timeout = timeout;
+}
+
+void radio_init(Radio *fd, const Setting * settings);
 
 #endif /* RADIO_CC1101_H */

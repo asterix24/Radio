@@ -154,7 +154,7 @@ static void radio_goIdle(void)
 	LOG_INFO("GoIdle: Rdy[%d] St[%d] FifoAvail[%d]\n", UNPACK_STATUS(status));
 }
 
-uint8_t radio_status(void)
+INLINE uint8_t radio_status(void)
 {
 	uint8_t status;
 	//Flush the data in the fifo
@@ -164,7 +164,7 @@ uint8_t radio_status(void)
 	return status;
 }
 
-int radio_lqi(void)
+INLINE int radio_lqi(void)
 {
 	uint8_t lqi = 0;
 	cc1101_read(CC1101_LQI, &lqi, 1);
@@ -172,7 +172,7 @@ int radio_lqi(void)
 	return lqi;
 }
 
-int radio_rssi(void)
+INLINE int radio_rssi(void)
 {
 	uint8_t rssi = 0;
 	cc1101_read(CC1101_RSSI, &rssi, 1);
@@ -186,38 +186,49 @@ void radio_sleep(void)
 }
 
 uint8_t tmp_buf[65];
-
-int radio_send(const void *buf, size_t len)
+static size_t radio_send(struct KFile *_fd, const void *_buf, size_t size)
 {
+	/* The packet len is now fix to max 64 byte (see configuation)*/
+	ASSERT(sizeof(tmp_buf) >= size);
+
+	const uint8_t *data = (const uint8_t *) _buf;
+	Radio *fd = RADIO_CAST(_fd);
+
 	radio_waitIdle(-1);
 	cc1101_strobe(CC1101_SFTX);
 	uint8_t status = cc1101_strobe(CC1101_STX);
 
 	memset(tmp_buf, 0, sizeof(tmp_buf));
 	// We reserve one byte for package len
-	size_t tx_len = MIN(sizeof(tmp_buf) - 1, len + 1);
+	size_t tx_len = MIN(sizeof(tmp_buf) - 1, size + 1);
 
 	tmp_buf[0] = tx_len - 1;
-	memcpy(&tmp_buf[1], buf, tx_len);
-	status = cc1101_write(CC1101_TXFIFO, tmp_buf, tx_len);
-	LOG_INFO("TxData[%d] s[%d]\n", tmp_buf[0], STATUS_STATE(status));
+	memcpy(&tmp_buf[1], data, tx_len);
+	fd->status = cc1101_write(CC1101_TXFIFO, tmp_buf, tx_len);
+	LOG_INFO("TxData[%d] s[%d]\n", tmp_buf[0], STATUS_STATE(fd->status));
 
 	radio_waitIdle(-1);
 	status = cc1101_strobe(CC1101_SFTX);
 	LOG_INFO("Tx: s1[%d]\n", STATUS_STATE(status));
 
+	if (STATUS_STATE(fd->status) == CC1101_STATUS_TX_FIFOUNFLOW)
+		return RADIO_TX_ERR;
+
 	return tx_len;
 }
 
-int radio_recv(void *buf, size_t len, mtime_t timeout)
+static size_t radio_recv(struct KFile *_fd, void *buf, size_t size)
 {
+	uint8_t *data = (uint8_t *)buf;
+	Radio *fd = RADIO_CAST(_fd);
+
 	radio_waitIdle(-1);
 	cc1101_strobe(CC1101_SFRX);
 	uint8_t status = cc1101_strobe(CC1101_SRX);
 	LOG_INFO("RxData: Rdy[%d] St[%d] FifoAvail[%d]\n", UNPACK_STATUS(status));
 
 	// Waiting data from air..
-	if (!wait_fifoAvail(timeout))
+	if (!wait_fifoAvail(fd->recv_timeout))
 	{
 		radio_goIdle();
 		cc1101_strobe(CC1101_SFRX);
@@ -228,13 +239,38 @@ int radio_recv(void *buf, size_t len, mtime_t timeout)
 	uint8_t rx_data;
 	cc1101_read(CC1101_RXFIFO, &rx_data, 1);
 
-	size_t rx_len = MIN((size_t)rx_data, len);
-	status = cc1101_read(CC1101_RXFIFO, buf, rx_len);
-	LOG_INFO("RxLen[%d] [%d] s[%d]\n", rx_len, len, STATUS_STATE(status));
+	size_t rx_len = MIN((size_t)rx_data, size);
+	status = cc1101_read(CC1101_RXFIFO, data, rx_len);
+	LOG_INFO("RxLen[%d] [%d] s[%d]\n", rx_len, size, STATUS_STATE(status));
 
 	radio_waitIdle(-1);
-	status = cc1101_strobe(CC1101_SFRX);
-	LOG_INFO("Rx: s1[%d]\n", STATUS_STATE(status));
+	fd->lqi = radio_lqi();
+	fd->rssi = radio_rssi();
+	fd->status = cc1101_strobe(CC1101_SFRX);
+	LOG_INFO("Rx: s1[%d], lqi[%d] rssi[%d]\n", STATUS_STATE(fd->status), fd->lqi & ~CC1101_LQI_CRC_OK, fd->rssi);
 
-	return rx_len;
+	/* check if fifo data is valid packet */
+	if (fd->lqi & CC1101_LQI_CRC_OK)
+	{
+		fd->lqi &= ~CC1101_LQI_CRC_OK;
+		return rx_len;
+	}
+
+	fd->lqi = 0;
+	return RADIO_RX_ERR;
+}
+
+void radio_init(Radio *fd, const Setting * settings)
+{
+	ASSERT(fd);
+	ASSERT(settings);
+
+	cc1101_init(settings);
+
+	 //Set kfile struct type as a generic kfile structure.
+	DB(fd->fd._type = KFT_RADIO);
+
+	// Set up data flash programming functions.
+	fd->fd.read = radio_recv;
+	fd->fd.write = radio_send;
 }

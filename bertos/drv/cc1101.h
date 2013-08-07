@@ -136,6 +136,12 @@
 #define CC1101_STATUS_RX_FIFOUNFLOW    6
 #define CC1101_STATUS_TX_FIFOUNFLOW    7
 
+
+/*
+ * Quality and signal strenght.
+ */
+#define CC1101_LQI_CRC_OK          BV(7)
+
 /*
  * Timeout to wait the SO pin of CC1101 goes low, if not, the cc1101 clock
  * does not run correctly
