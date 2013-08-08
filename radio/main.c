@@ -37,6 +37,7 @@
 
 
 #include "radio_cc1101.h"
+#include "protocol.h"
 
 #include "hw/hw_cc1101.h"
 #include "hw/hw_adc.h"
@@ -69,39 +70,27 @@ static void init(void)
 	radio_timeout(&radio, -1);
 }
 
-uint8_t tmp[100];
 int main(void)
 {
 	init();
-	int ret;
 	int id = radio_id();
 
-	memset(tmp,0x61,sizeof(tmp));
-
 	kprintf("%s [%d]\n", id == RADIO_MASTER ? "MASTER" : "SLAVE", id);
-	while (1)
+	if (id == RADIO_MASTER)
 	{
-		if (id == RADIO_MASTER)
+		protocol_init(master_cmd);
+		while(1)
+			protocol_poll(&radio.fd);
+	}
+	else
+	{
+		protocol_init(slave_cmd);
+		while (1)
 		{
-			ret = kfile_read(&radio.fd, &tmp, sizeof(tmp));
-
-			if (ret > 99)
-				ret = 99;
-
-			if (ret > 0)
-			{
-				tmp[ret + 1] = '\0';
-				kprintf("%d [%s]\n", ret, tmp);
-			}
-		}
-		else
-		{
-			for (int i = 1; i < 64; i++)
-			{
-				kprintf("%d\n", i);
-				kfile_write(&radio.fd, &tmp, i);
-				timer_delay(1000);
-			}
+			Protocol proto;
+			bool sent = protocol_sendBroadcast(&radio.fd, &proto, 1, (uint8_t *)"primo messaggio", sizeof("primo messaggio"));
+			kprintf("Messaggio spedito[%d]\n", sent);
+			timer_delay(1000);
 		}
 	}
 

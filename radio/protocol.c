@@ -35,14 +35,64 @@
  * \author Daniele Basile <asterix@develer.com>
  */
 
-
 #include "protocol.h"
 
+#include <cfg/debug.h>
+
+#include <string.h>
+
+static ProtocolCmd *proto_cmd;
+
+static int protocol_broadcast(Protocol *proto)
+{
+	proto->data[proto->len] = '\0';
+	kprintf("type[%d], addr[%d], data[%s]", proto->type, proto->addr, proto->data);
+
+	return 0;
+}
+
+const ProtocolCmd master_cmd[] = {
+	{ 0xFF, protocol_broadcast },
+	{ 0   , NULL }
+};
+
+const ProtocolCmd slave_cmd[] = {
+	{ 0     , NULL }
+};
+
+static protocol_t *protocol_search(Protocol *proto)
+{
+	for (int i = 0; proto_cmd[1].id; i++)
+		if (proto->type == proto_cmd[i].id)
+			return proto_cmd[i].callback;
+	return NULL;
+}
+
+bool protocol_sendBroadcast(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len)
+{
+	proto->type = RADIO_BROADCAST;
+	proto->addr = addr;
+	proto->len = len;
+	proto->data = data;
+
+	if (kfile_write(fd, proto, sizeof(Protocol)) > 0)
+		return true;
+
+	return false;
+}
 
 void protocol_poll(KFile *fd)
 {
+	Protocol proto;
+	kfile_read(fd, &proto, sizeof(proto));
+	protocol_t *callback = protocol_search(&proto);
+
+	if (callback)
+		callback(&proto);
 }
 
-void protocol_init(protocol_t *);
+void protocol_init(const ProtocolCmd *table)
 {
+	proto_cmd = table;
 }
+

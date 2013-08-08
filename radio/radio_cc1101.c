@@ -185,7 +185,7 @@ void radio_sleep(void)
 	LOG_INFO("Sleep: Rdy[%d] St[%d] FifoAvail[%d]\n", UNPACK_STATUS(cc1101_strobe(CC1101_SPWD)));
 }
 
-uint8_t tmp_buf[65];
+static uint8_t tmp_buf[65];
 static size_t radio_send(struct KFile *_fd, const void *_buf, size_t size)
 {
 	/* The packet len is now fix to max 64 byte (see configuation)*/

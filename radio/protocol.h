@@ -45,15 +45,35 @@
 
 #include <cpu/types.h>
 
-typedef void (protocol_t)(KFile *fd);
 
 typedef struct Protocol
 {
+	uint8_t type;
 	uint8_t addr;
+	uint8_t len;
+	uint8_t *data;
 } Protocol;
 
+typedef int (protocol_t)(Protocol *proto);
+
+typedef struct ProtocolCmd
+{
+	uint8_t id;
+	protocol_t *callback;
+} ProtocolCmd;
+
+/*
+ * Message type
+ */
+#define RADIO_BROADCAST    0xFF
+
+
+extern const ProtocolCmd master_cmd[];
+extern const ProtocolCmd slave_cmd[];
+
+bool protocol_sendBroadcast(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len);
 void protocol_poll(KFile *fd);
-void protocol_init(protocol_t *);
+void protocol_init(const ProtocolCmd *table);
 
 #endif /* RADIO_PROTOCOL_H */
 
