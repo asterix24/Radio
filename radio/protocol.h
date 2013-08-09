@@ -41,41 +41,41 @@
 #ifndef RADIO_PROTOCOL_H
 #define RADIO_PROTOCOL_H
 
+#include "cmd.h"
+#include "radio_cc1101.h"
+
 #include <io/kfile.h>
 
 #include <cpu/types.h>
 
+/* Settings */
+#define PROTO_DATALEN  (RADIO_MAXPAYLOAD_LEN - 4) // See Protocol structure, we remove the other fields.
 
-/*
- * Message type
- */
-#define RADIO_BROADCAST        0xFF
+/* Protocol constant define */
+#define PROTO_ACK    0x06
+#define PROTO_NACK   0x15
 
-#define RADIO_MAXPAYLOAD_LEN   60
+/* Protocol errors */
+#define PROTO_OK             0
+#define PROTO_ERR           -1
+#define PROTO_WRONG_ADDR    -2
+#define PROTO_TIMEOUT       -3
 
 typedef struct Protocol
 {
 	uint8_t type;
 	uint8_t addr;
 	uint16_t len;
-	uint8_t data[RADIO_MAXPAYLOAD_LEN];
+	uint8_t data[PROTO_DATALEN];
 } Protocol;
 
-typedef int (protocol_t)(Protocol *proto);
-
-typedef struct ProtocolCmd
-{
-	uint8_t id;
-	protocol_t *callback;
-} ProtocolCmd;
 
 
-extern const ProtocolCmd master_cmd[];
-extern const ProtocolCmd slave_cmd[];
-
-bool protocol_sendBroadcast(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len);
+int protocol_broadcast(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len);
+int protocol_reply(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len);
+int protocol_waitReply(KFile *fd, Protocol *proto);
 void protocol_poll(KFile *fd);
-void protocol_init(const ProtocolCmd *table);
+void protocol_init(const Cmd *table);
 
 #endif /* RADIO_PROTOCOL_H */
 

@@ -38,6 +38,7 @@
 
 #include "radio_cc1101.h"
 #include "protocol.h"
+#include "cmd.h"
 
 #include "hw/hw_cc1101.h"
 #include "hw/hw_adc.h"
@@ -80,7 +81,10 @@ int main(void)
 	{
 		protocol_init(master_cmd);
 		while(1)
+		{
+			kputs("Aspetto msg\n");
 			protocol_poll(&radio.fd);
+		}
 	}
 	else
 	{
@@ -88,9 +92,26 @@ int main(void)
 		while (1)
 		{
 			Protocol proto;
-			bool sent = protocol_sendBroadcast(&radio.fd, &proto, 1, (uint8_t *)"primo messaggio", sizeof("primo messaggio"));
+			int sent = protocol_broadcast(&radio.fd, &proto, 1, (uint8_t *)"primo messaggio", sizeof("primo messaggio"));
 			kprintf("Messaggio spedito[%d]\n", sent);
-			timer_delay(1000);
+
+			radio_timeout(&radio, 1000);
+
+			memset(&proto, 0, sizeof(Protocol));
+			int ret = protocol_waitReply(&radio.fd, &proto);
+			kputs("3\n");
+
+			if (ret < 0)
+			{
+				kprintf("err[%d]\n", ret);
+				continue;
+			}
+
+			kputs("4\n");
+			kprintf("Risposta[%d][%d][%d]\n", proto.type, proto.addr,  proto.data[0]);
+			kputs("5\n");
+
+			timer_delay(5000);
 		}
 	}
 

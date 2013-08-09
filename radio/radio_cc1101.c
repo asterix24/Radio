@@ -154,6 +154,7 @@ static void radio_goIdle(void)
 	LOG_INFO("GoIdle: Rdy[%d] St[%d] FifoAvail[%d]\n", UNPACK_STATUS(status));
 }
 
+
 INLINE uint8_t radio_status(void)
 {
 	uint8_t status;
@@ -185,6 +186,18 @@ void radio_sleep(void)
 	LOG_INFO("Sleep: Rdy[%d] St[%d] FifoAvail[%d]\n", UNPACK_STATUS(cc1101_strobe(CC1101_SPWD)));
 }
 
+static int radio_error(struct KFile *_fd)
+{
+	Radio *fd = RADIO_CAST(_fd);
+	return fd->error;
+}
+
+static void radio_clearerr(struct KFile *_fd)
+{
+	Radio *fd = RADIO_CAST(_fd);
+	fd->error = 0;
+}
+
 static uint8_t tmp_buf[65];
 static size_t radio_send(struct KFile *_fd, const void *_buf, size_t size)
 {
@@ -212,7 +225,10 @@ static size_t radio_send(struct KFile *_fd, const void *_buf, size_t size)
 	LOG_INFO("Tx: s1[%d]\n", STATUS_STATE(status));
 
 	if (STATUS_STATE(fd->status) == CC1101_STATUS_TX_FIFOUNFLOW)
+	{
+		fd->error = RADIO_TX_ERR;
 		return RADIO_TX_ERR;
+	}
 
 	return tx_len;
 }
@@ -233,6 +249,7 @@ static size_t radio_recv(struct KFile *_fd, void *buf, size_t size)
 		radio_goIdle();
 		cc1101_strobe(CC1101_SFRX);
 		LOG_ERR("Rx timeout..\n");
+		fd->error = RADIO_RX_TIMEOUT;
 		return RADIO_RX_TIMEOUT;
 	}
 
@@ -257,6 +274,7 @@ static size_t radio_recv(struct KFile *_fd, void *buf, size_t size)
 	}
 
 	fd->lqi = 0;
+	fd->error = RADIO_RX_ERR;
 	return RADIO_RX_ERR;
 }
 
@@ -273,4 +291,7 @@ void radio_init(Radio *fd, const Setting * settings)
 	// Set up data flash programming functions.
 	fd->fd.read = radio_recv;
 	fd->fd.write = radio_send;
+	fd->fd.error = radio_error;
+	fd->fd.clearerr = radio_clearerr;
+	fd->error = 0;
 }

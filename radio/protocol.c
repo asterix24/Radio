@@ -36,31 +36,15 @@
  */
 
 #include "protocol.h"
+#include "cmd.h"
 
 #include <cfg/debug.h>
 
 #include <string.h>
 
-const ProtocolCmd *proto_cmd;
+const Cmd *proto_cmd;
 
-static int protocol_broadcast(Protocol *proto)
-{
-	proto->data[proto->len] = '\0';
-	kprintf("type[%d], addr[%d], data[%s]", proto->type, proto->addr, proto->data);
-
-	return 0;
-}
-
-const ProtocolCmd master_cmd[] = {
-	{ 0xFF, protocol_broadcast },
-	{ 0   , NULL }
-};
-
-const ProtocolCmd slave_cmd[] = {
-	{ 0     , NULL }
-};
-
-static protocol_t *protocol_search(Protocol *proto)
+static cmd_t *protocol_search(Protocol *proto)
 {
 	for (int i = 0; (proto_cmd[i].id != 0) && (proto_cmd[i].callback != NULL); i++)
 		if (proto->type == proto_cmd[i].id)
@@ -69,11 +53,11 @@ static protocol_t *protocol_search(Protocol *proto)
 	return NULL;
 }
 
-bool protocol_sendBroadcast(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len)
+static bool protocol_send(KFile *fd, Protocol *proto, uint8_t type, uint8_t addr, uint8_t *data, size_t len)
 {
-	ASSERT(len < RADIO_MAXPAYLOAD_LEN);
+	ASSERT(len < PROTO_DATALEN);
 
-	proto->type = RADIO_BROADCAST;
+	proto->type = type;
 	proto->addr = addr;
 	proto->len = len;
 	memcpy(proto->data, data, len);
@@ -84,17 +68,56 @@ bool protocol_sendBroadcast(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *d
 	return false;
 }
 
+int protocol_broadcast(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len)
+{
+	return protocol_send(fd, proto, CMD_TYPE_BROADCAST, addr, data, len);
+}
+
+int protocol_reply(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len)
+{
+	return protocol_send(fd, proto, CMD_TYPE_REPLY, addr, data, len);
+}
+
+int protocol_waitReply(KFile *fd, Protocol *proto)
+{
+	kfile_read(fd, &proto, sizeof(Protocol));
+
+	int ret = kfile_error(fd);
+	if (ret < 0 || !proto)
+	{
+		kfile_clearerr(fd);
+		if (ret == RADIO_RX_TIMEOUT)
+			return PROTO_TIMEOUT;
+
+		return PROTO_ERR;
+	}
+
+	if (proto->type == CMD_TYPE_REPLY)
+	{
+
+		kputs("22\n");
+		return proto->data[0];
+	}
+	else
+	{
+		kputs("33\n");
+		return PROTO_WRONG_ADDR;
+	}
+
+	return PROTO_ERR;
+}
+
 void protocol_poll(KFile *fd)
 {
 	Protocol proto;
 	kfile_read(fd, &proto, sizeof(Protocol));
-	protocol_t *callback = protocol_search(&proto);
+	cmd_t *callback = protocol_search(&proto);
 
 	if (callback)
-		callback(&proto);
+		callback(fd, &proto);
 }
 
-void protocol_init(const ProtocolCmd *table)
+void protocol_init(const Cmd *table)
 {
 	proto_cmd = table;
 }

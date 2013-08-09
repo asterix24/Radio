@@ -15,6 +15,7 @@ radio_USER_CSRC = \
 	bertos/drv/cc1101.c \
 	$(radio_SRC_PATH)/radio_cc1101.c \
 	$(radio_SRC_PATH)/protocol.c \
+	$(radio_SRC_PATH)/cmd.c \
 	#
 
 # Files included by the user.

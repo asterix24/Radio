@@ -58,6 +58,7 @@ typedef struct Radio
 	KFile fd; ///< File descriptor.
 	mtime_t recv_timeout;
 	uint8_t status;
+	uint8_t error;
 	uint8_t lqi;  ///< Link quality descriptor.
 	uint8_t rssi; ///< Received Signal Strength Indication.
 } Radio;
@@ -87,6 +88,7 @@ extern const Setting ping_low_baud_868[];
 #define RADIO_RX_ERR        -2
 #define RADIO_RX_TIMEOUT    -3
 
+#define RADIO_MAXPAYLOAD_LEN  64
 
 void radio_sleep(void);
 INLINE void radio_timeout(Radio *fd, mtime_t timeout)
