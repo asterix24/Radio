@@ -46,12 +46,19 @@
 #include <cpu/types.h>
 
 
+/*
+ * Message type
+ */
+#define RADIO_BROADCAST        0xFF
+
+#define RADIO_MAXPAYLOAD_LEN   60
+
 typedef struct Protocol
 {
 	uint8_t type;
 	uint8_t addr;
-	uint8_t len;
-	uint8_t *data;
+	uint16_t len;
+	uint8_t data[RADIO_MAXPAYLOAD_LEN];
 } Protocol;
 
 typedef int (protocol_t)(Protocol *proto);
@@ -61,11 +68,6 @@ typedef struct ProtocolCmd
 	uint8_t id;
 	protocol_t *callback;
 } ProtocolCmd;
-
-/*
- * Message type
- */
-#define RADIO_BROADCAST    0xFF
 
 
 extern const ProtocolCmd master_cmd[];

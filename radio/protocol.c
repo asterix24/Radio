@@ -41,7 +41,7 @@
 
 #include <string.h>
 
-static ProtocolCmd *proto_cmd;
+const ProtocolCmd *proto_cmd;
 
 static int protocol_broadcast(Protocol *proto)
 {
@@ -62,18 +62,21 @@ const ProtocolCmd slave_cmd[] = {
 
 static protocol_t *protocol_search(Protocol *proto)
 {
-	for (int i = 0; proto_cmd[1].id; i++)
+	for (int i = 0; (proto_cmd[i].id != 0) && (proto_cmd[i].callback != NULL); i++)
 		if (proto->type == proto_cmd[i].id)
 			return proto_cmd[i].callback;
+
 	return NULL;
 }
 
 bool protocol_sendBroadcast(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len)
 {
+	ASSERT(len < RADIO_MAXPAYLOAD_LEN);
+
 	proto->type = RADIO_BROADCAST;
 	proto->addr = addr;
 	proto->len = len;
-	proto->data = data;
+	memcpy(proto->data, data, len);
 
 	if (kfile_write(fd, proto, sizeof(Protocol)) > 0)
 		return true;
@@ -84,7 +87,7 @@ bool protocol_sendBroadcast(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *d
 void protocol_poll(KFile *fd)
 {
 	Protocol proto;
-	kfile_read(fd, &proto, sizeof(proto));
+	kfile_read(fd, &proto, sizeof(Protocol));
 	protocol_t *callback = protocol_search(&proto);
 
 	if (callback)
