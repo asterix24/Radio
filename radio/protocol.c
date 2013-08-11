@@ -80,7 +80,7 @@ int protocol_reply(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size
 
 int protocol_waitReply(KFile *fd, Protocol *proto)
 {
-	int len = kfile_read(fd, proto, sizeof(Protocol));
+	kfile_read(fd, proto, sizeof(Protocol));
 
 	int ret = kfile_error(fd);
 	if (ret < 0)

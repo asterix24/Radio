@@ -83,7 +83,7 @@ int main(void)
 		protocol_init(master_cmd);
 		while(1)
 		{
-			kputs("Aspetto msg\n");
+			kputs("Ready:\n");
 			protocol_poll(&radio.fd);
 		}
 	}
@@ -93,23 +93,16 @@ int main(void)
 		while (1)
 		{
 			int sent = protocol_broadcast(&radio.fd, &proto, 1, (uint8_t *)"primo messaggio", sizeof("primo messaggio"));
-			kprintf("Messaggio spedito[%d]\n", sent);
+			kprintf("Sent[%d]\n", sent);
 
 			radio_timeout(&radio, 1000);
 
 			memset(&proto, 0, sizeof(Protocol));
-			int ret = protocol_waitReply(&radio.fd, &proto);
-
-			if (ret < 0)
-			{
+			int ret = 0;
+			if ((ret = protocol_checkACK(&radio.fd, &proto)) == PROTO_OK)
+				kprintf("ACK\n");
+			else
 				kprintf("err[%d]\n", ret);
-				if (ret == PROTO_TIMEOUT)
-					kputs("no message from master\n");
-
-				continue;
-			}
-
-			kprintf("Risposta[%d][%d][%x]\n", proto.type, proto.addr, proto.data[0]);
 
 			timer_delay(5000);
 		}
