@@ -266,6 +266,13 @@ static size_t radio_recv(struct KFile *_fd, void *buf, size_t size)
 	fd->status = cc1101_strobe(CC1101_SFRX);
 	LOG_INFO("Rx: s1[%d], lqi[%d] rssi[%d]\n", STATUS_STATE(fd->status), fd->lqi & ~CC1101_LQI_CRC_OK, fd->rssi);
 
+	LOG_INFOB(
+	kputs("[");
+	for (size_t i = 0; i < rx_len; i++)
+		kprintf("%x ", data[i]);
+	kprintf("] %d\n", rx_len);
+	);
+
 	/* check if fifo data is valid packet */
 	if (fd->lqi & CC1101_LQI_CRC_OK)
 	{

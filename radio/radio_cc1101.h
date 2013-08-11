@@ -58,7 +58,7 @@ typedef struct Radio
 	KFile fd; ///< File descriptor.
 	mtime_t recv_timeout;
 	uint8_t status;
-	uint8_t error;
+	int error;
 	uint8_t lqi;  ///< Link quality descriptor.
 	uint8_t rssi; ///< Received Signal Strength Indication.
 } Radio;
