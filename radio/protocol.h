@@ -71,6 +71,7 @@ typedef struct Protocol
 
 
 
+int protocol_data(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len);
 int protocol_broadcast(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len);
 int protocol_reply(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len);
 int protocol_waitReply(KFile *fd, Protocol *proto);

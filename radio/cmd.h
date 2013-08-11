@@ -42,11 +42,19 @@
 
 #include <io/kfile.h>
 
+#include <struct/list.h>
+
 /*
  * Message type
  */
 #define CMD_TYPE_BROADCAST        0xFF
 #define CMD_TYPE_REPLY             0x1
+#define CMD_TYPE_DATA              0x2
+
+/*
+ * Settings
+ */
+#define CMD_DEVICES                  5
 
 struct Protocol;
 typedef int (cmd_t)(KFile *fd, struct Protocol *proto);
@@ -57,9 +65,19 @@ typedef struct Cmd
 	cmd_t *callback;
 } Cmd;
 
+typedef struct Devices
+{
+	uint8_t addr;
+	uint8_t data[60];
+} Devices;
+
+
 
 extern const Cmd master_cmd[];
 extern const Cmd slave_cmd[];
+
+//void cmd_init();
+void cmd_poll(void);
 
 #endif /* RADIO_CMD_H */
 

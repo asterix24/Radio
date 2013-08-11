@@ -41,20 +41,48 @@
 
 #include <string.h>
 
+static Protocol local_dev[CMD_DEVICES];
+
 static int cmd_broadcast(KFile *fd, Protocol *proto)
 {
+	uint8_t reply = 0;
+	for (int i = 0; i < 5; i++)
+	{
+		if (local_dev[i].addr == proto->addr)
+		{
+			reply = PROTO_ACK;
+			break;
+		}
+		else if (!local_dev[i].addr)
+		{
+			local_dev[i].addr =  proto->addr;
+			memcpy(local_dev[i].data, proto->data, proto->len);
+			reply = PROTO_ACK;
+			break;
+		}
+		else
+			reply = PROTO_NACK;
+	}
+
 	proto->data[proto->len] = '\0';
 	kprintf("type[%d], addr[%d], data[%s]\n", proto->type, proto->addr, proto->data);
 
-	uint8_t ack = PROTO_ACK;
-	if (protocol_reply(fd, proto, proto->addr, &ack, sizeof(ack)))
+	if (protocol_reply(fd, proto, proto->addr, &reply, sizeof(reply)))
 		return 0;
 
 	return -1;
 }
 
+static int cmd_data(KFile *fd, Protocol *proto)
+{
+	proto->data[proto->len] = '\0';
+	kprintf("type[%d], addr[%d], data[%s]\n", proto->type, proto->addr, proto->data);
+	return 0;
+}
+
 const Cmd master_cmd[] = {
-	{ 0xFF, cmd_broadcast },
+	{ CMD_TYPE_BROADCAST, cmd_broadcast },
+	{ CMD_TYPE_DATA,      cmd_data },
 	{ 0   , NULL }
 };
 
@@ -62,4 +90,15 @@ const Cmd slave_cmd[] = {
 	{ 0     , NULL }
 };
 
+void cmd_poll(void)
+{
+	for (int i = 0; i < CMD_DEVICES; i++)
+	{
+		if (local_dev[i].addr)
+			kprintf("Addr[%d],data[%s]\n", local_dev[i].addr, local_dev[i].data);
+		else
+			kprintf("Empty\n", local_dev[i].addr, local_dev[i].data);
+
+	}
+}
 

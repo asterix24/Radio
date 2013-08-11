@@ -78,6 +78,11 @@ int protocol_reply(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size
 	return protocol_send(fd, proto, CMD_TYPE_REPLY, addr, data, len);
 }
 
+int protocol_data(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len)
+{
+	return protocol_send(fd, proto, CMD_TYPE_DATA, addr, data, len);
+}
+
 int protocol_waitReply(KFile *fd, Protocol *proto)
 {
 	kfile_read(fd, proto, sizeof(Protocol));

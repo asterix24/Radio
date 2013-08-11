@@ -85,6 +85,7 @@ int main(void)
 		{
 			kputs("Ready:\n");
 			protocol_poll(&radio.fd);
+			cmd_poll();
 		}
 	}
 	else
@@ -100,7 +101,10 @@ int main(void)
 			memset(&proto, 0, sizeof(Protocol));
 			int ret = 0;
 			if ((ret = protocol_checkACK(&radio.fd, &proto)) == PROTO_OK)
+			{
 				kprintf("ACK\n");
+				protocol_data(&radio.fd, &proto, 1, (uint8_t *)"data da slave", sizeof("data da slave"));
+			}
 			else
 				kprintf("err[%d]\n", ret);
 
