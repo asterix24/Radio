@@ -71,6 +71,7 @@ static void init(void)
 	radio_timeout(&radio, -1);
 }
 
+static Protocol proto;
 int main(void)
 {
 	init();
@@ -91,7 +92,6 @@ int main(void)
 		protocol_init(slave_cmd);
 		while (1)
 		{
-			Protocol proto;
 			int sent = protocol_broadcast(&radio.fd, &proto, 1, (uint8_t *)"primo messaggio", sizeof("primo messaggio"));
 			kprintf("Messaggio spedito[%d]\n", sent);
 
@@ -99,17 +99,17 @@ int main(void)
 
 			memset(&proto, 0, sizeof(Protocol));
 			int ret = protocol_waitReply(&radio.fd, &proto);
-			kputs("3\n");
 
 			if (ret < 0)
 			{
 				kprintf("err[%d]\n", ret);
+				if (ret == PROTO_TIMEOUT)
+					kputs("no message from master\n");
+
 				continue;
 			}
 
-			kputs("4\n");
-			kprintf("Risposta[%d][%d][%d]\n", proto.type, proto.addr,  proto.data[0]);
-			kputs("5\n");
+			kprintf("Risposta[%d][%d][%x]\n", proto.type, proto.addr, proto.data[0]);
 
 			timer_delay(5000);
 		}

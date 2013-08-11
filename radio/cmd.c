@@ -47,10 +47,10 @@ static int cmd_broadcast(KFile *fd, Protocol *proto)
 	kprintf("type[%d], addr[%d], data[%s]\n", proto->type, proto->addr, proto->data);
 
 	uint8_t ack = PROTO_ACK;
-	int ret = protocol_reply(fd, proto, proto->addr, "ACK", sizeof("ACK"));
-	kprintf("Send[%d]\n", ret);
+	if (protocol_reply(fd, proto, proto->addr, &ack, sizeof(ack)))
+		return 0;
 
-	return 0;
+	return -1;
 }
 
 const Cmd master_cmd[] = {

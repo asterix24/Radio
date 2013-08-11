@@ -80,10 +80,10 @@ int protocol_reply(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size
 
 int protocol_waitReply(KFile *fd, Protocol *proto)
 {
-	kfile_read(fd, &proto, sizeof(Protocol));
+	int len = kfile_read(fd, proto, sizeof(Protocol));
 
 	int ret = kfile_error(fd);
-	if (ret < 0 || !proto)
+	if (ret < 0)
 	{
 		kfile_clearerr(fd);
 		if (ret == RADIO_RX_TIMEOUT)
@@ -92,17 +92,11 @@ int protocol_waitReply(KFile *fd, Protocol *proto)
 		return PROTO_ERR;
 	}
 
+	ASSERT(proto);
 	if (proto->type == CMD_TYPE_REPLY)
-	{
-
-		kputs("22\n");
-		return proto->data[0];
-	}
+		return PROTO_OK;
 	else
-	{
-		kputs("33\n");
 		return PROTO_WRONG_ADDR;
-	}
 
 	return PROTO_ERR;
 }
