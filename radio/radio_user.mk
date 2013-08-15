@@ -14,6 +14,7 @@ radio_USER_CSRC = \
 	bertos/drv/spi.c \
 	bertos/drv/cc1101.c \
 	$(radio_SRC_PATH)/radio_cc1101.c \
+	$(radio_SRC_PATH)/radio_cfg.c \
 	$(radio_SRC_PATH)/protocol.c \
 	$(radio_SRC_PATH)/cmd.c \
 	#

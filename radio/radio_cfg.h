@@ -26,33 +26,27 @@
  * invalidate any other reasons why the executable file might be covered by
  * the GNU General Public License.
  *
- * Copyright 2012 Develer S.r.l. (http://www.develer.com/)
+ * Copyright 2013 Develer S.r.l. (http://www.develer.com/)
  * All Rights Reserved.
  * -->
  *
- * \brief CC1101 transceiver
+ * \brief Radio config.
  *
  * \author Daniele Basile <asterix@develer.com>
  */
 
-#ifndef HW_CC1101_H
-#define HW_CC1101_H
+#ifndef RADIO_CFG_H
+#define RADIO_CFG_H
 
-#include <cfg/macros.h>
+#include <cpu/types.h>
 
-#include <io/stm32.h>
+/*
+ * Radio ids table.
+ */
+#define RADIO_MASTER    0
 
-#include <drv/gpio_stm32.h>
+uint8_t radio_cfg_id(void);
+void radio_cfg_init(void);
 
-#define CC1101_GDO0     BV(11)  // PA11
-#define CC1101_GDO2     BV(12)  // PA12
+#endif /* RADIO_CFG_H */
 
-#define CC1101_HW_FIFOAVAIL() stm32_gpioPinRead(((struct stm32_gpio *)GPIOA_BASE), CC1101_GDO0)
-
-#define CC1101_HW_INIT() \
-do { \
-	RCC->APB2ENR |= RCC_APB2_GPIOA;			\
-	stm32_gpioPinConfig(((struct stm32_gpio *)GPIOA_BASE), CC1101_GDO0 | CC1101_GDO2, GPIO_MODE_IN_FLOATING, GPIO_SPEED_50MHZ); \
-} while (0)
-
-#endif /* HW_CC1101_H */

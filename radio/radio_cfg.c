@@ -26,33 +26,53 @@
  * invalidate any other reasons why the executable file might be covered by
  * the GNU General Public License.
  *
- * Copyright 2012 Develer S.r.l. (http://www.develer.com/)
+ * Copyright 2013 Develer S.r.l. (http://www.develer.com/)
  * All Rights Reserved.
  * -->
  *
- * \brief CC1101 transceiver
+ * \brief Radio config.
  *
  * \author Daniele Basile <asterix@develer.com>
  */
 
-#ifndef HW_CC1101_H
-#define HW_CC1101_H
+#include "radio_cfg.h"
 
 #include <cfg/macros.h>
 
 #include <io/stm32.h>
 
+#include <cpu/types.h>
+
 #include <drv/gpio_stm32.h>
+#include <drv/clock_stm32.h>
 
-#define CC1101_GDO0     BV(11)  // PA11
-#define CC1101_GDO2     BV(12)  // PA12
+#define RADIO_CFG_ID0   BV(5)  // PB5 -> P16
+#define RADIO_CFG_ID1   BV(6)  // PB6 -> P17
+#define RADIO_CFG_ID2   BV(7)  // PB7 -> P18
+#define RADIO_CFG_ID3   BV(8)  // PB8 -> P19
 
-#define CC1101_HW_FIFOAVAIL() stm32_gpioPinRead(((struct stm32_gpio *)GPIOA_BASE), CC1101_GDO0)
+#define RADIO_ID   (RADIO_CFG_ID0 | \
+                    RADIO_CFG_ID1 | \
+                    RADIO_CFG_ID2 | \
+                    RADIO_CFG_ID3)
 
-#define CC1101_HW_INIT() \
+#define RADIO_HW_INIT() \
 do { \
-	RCC->APB2ENR |= RCC_APB2_GPIOA;			\
-	stm32_gpioPinConfig(((struct stm32_gpio *)GPIOA_BASE), CC1101_GDO0 | CC1101_GDO2, GPIO_MODE_IN_FLOATING, GPIO_SPEED_50MHZ); \
+	RCC->APB2ENR |= RCC_APB2_GPIOB;			\
+	stm32_gpioPinConfig(((struct stm32_gpio *)GPIOB_BASE), RADIO_ID, GPIO_MODE_IPU, GPIO_SPEED_50MHZ); \
 } while (0)
 
-#endif /* HW_CC1101_H */
+/*
+ * Get the device id
+ */
+uint8_t radio_cfg_id(void)
+{
+	return stm32_gpioPinRead(((struct stm32_gpio *)GPIOB_BASE), BV(5) | BV(6)) >> 5;
+}
+
+void radio_cfg_init(void)
+{
+	RADIO_HW_INIT();
+}
+
+

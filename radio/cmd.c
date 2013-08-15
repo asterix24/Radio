@@ -98,7 +98,7 @@ void cmd_poll(void)
 		if (local_dev[i].addr)
 			kprintf("Addr[%d],data[%s]\n", local_dev[i].addr, local_dev[i].data);
 		else
-			kprintf("Empty\n", local_dev[i].addr, local_dev[i].data);
+			kprintf("Empty\n");
 	}
 }
 

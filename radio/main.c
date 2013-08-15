@@ -37,6 +37,7 @@
 
 
 #include "radio_cc1101.h"
+#include "radio_cfg.h"
 #include "protocol.h"
 #include "cmd.h"
 
@@ -67,15 +68,18 @@ static void init(void)
 
 	spi_init();
 	adc_init();
+
+	radio_cfg_init();
 	radio_init(&radio, ping_low_baud_868);
 	radio_timeout(&radio, -1);
+
 }
 
 static Protocol proto;
 int main(void)
 {
 	init();
-	int id = radio_id();
+	uint8_t id = radio_cfg_id();
 
 	kprintf("%s [%d]\n", id == RADIO_MASTER ? "MASTER" : "SLAVE", id);
 	if (id == RADIO_MASTER)
@@ -93,22 +97,22 @@ int main(void)
 		protocol_init(slave_cmd);
 		while (1)
 		{
-			int sent = protocol_broadcast(&radio.fd, &proto, 1, (uint8_t *)"primo messaggio", sizeof("primo messaggio"));
+			int sent = protocol_broadcast(&radio.fd, &proto, id, (uint8_t *)"primo messaggio", sizeof("primo messaggio"));
 			kprintf("Sent[%d]\n", sent);
 
 			radio_timeout(&radio, 1000);
 
 			memset(&proto, 0, sizeof(Protocol));
-			int ret = protocol_waitReply(&radio.fd, &proto);
+			int ret = protocol_checkReply(&radio.fd, &proto);
 			if (ret == PROTO_ACK)
 			{
 				kprintf("ACK\n");
-				protocol_data(&radio.fd, &proto, 1, (uint8_t *)"data da slave", sizeof("data da slave"));
+				protocol_data(&radio.fd, &proto, id, (uint8_t *)"data da slave", sizeof("data da slave"));
 			}
 			else if (ret == PROTO_NACK)
 			{
 				timer_delay(500);
-				sent = protocol_broadcast(&radio.fd, &proto, 1, (uint8_t *)"primo messaggio", sizeof("primo messaggio"));
+				sent = protocol_broadcast(&radio.fd, &proto, id, (uint8_t *)"primo messaggio", sizeof("primo messaggio"));
 				kprintf("Sent[%d]\n", sent);
 			}
 			else

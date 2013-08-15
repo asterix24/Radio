@@ -149,7 +149,7 @@ void cc1101_powerOnReset(void)
  */
 void cc1101_init(const Setting  *settings)
 {
-//	CC1101_HW_INIT();
+	CC1101_HW_INIT();
 
 	cc1101_powerOnReset();
 

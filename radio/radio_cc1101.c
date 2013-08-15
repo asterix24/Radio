@@ -117,7 +117,7 @@ static bool wait_fifoAvail(mtime_t timeout)
 				return false;
 		}
 
-	} while (!stm32_gpioPinRead(GPIO_BASE_A, BV(11)));
+	} while (!CC1101_HW_FIFOAVAIL());
 
 	return true;
 }
