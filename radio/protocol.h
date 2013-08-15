@@ -78,16 +78,17 @@ int protocol_waitReply(KFile *fd, Protocol *proto);
 void protocol_poll(KFile *fd);
 void protocol_init(const Cmd *table);
 
-INLINE int protocol_checkACK(KFile *fd, Protocol *proto)
+/*
+ * Utility function to check ACK or NACK, generally check
+ * the result of CMD_TYPE_REPLY.
+ */
+INLINE int protocol_checkReply(KFile *fd, Protocol *proto)
 {
 	int ret = protocol_waitReply(fd, proto);
 	if (ret < 0)
 		return ret;
 
-	if (proto->data[0] == PROTO_ACK)
-		return PROTO_OK;
-
-	return PROTO_ERR;
+	return (proto->data[0]);
 }
 
 #endif /* RADIO_PROTOCOL_H */

@@ -99,14 +99,22 @@ int main(void)
 			radio_timeout(&radio, 1000);
 
 			memset(&proto, 0, sizeof(Protocol));
-			int ret = 0;
-			if ((ret = protocol_checkACK(&radio.fd, &proto)) == PROTO_OK)
+			int ret = protocol_waitReply(&radio.fd, &proto);
+			if (ret == PROTO_ACK)
 			{
 				kprintf("ACK\n");
 				protocol_data(&radio.fd, &proto, 1, (uint8_t *)"data da slave", sizeof("data da slave"));
 			}
+			else if (ret == PROTO_NACK)
+			{
+				timer_delay(500);
+				sent = protocol_broadcast(&radio.fd, &proto, 1, (uint8_t *)"primo messaggio", sizeof("primo messaggio"));
+				kprintf("Sent[%d]\n", sent);
+			}
 			else
+			{
 				kprintf("err[%d]\n", ret);
+			}
 
 			timer_delay(5000);
 		}

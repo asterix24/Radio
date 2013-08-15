@@ -75,6 +75,7 @@ static int cmd_broadcast(KFile *fd, Protocol *proto)
 
 static int cmd_data(KFile *fd, Protocol *proto)
 {
+	(void)fd;
 	proto->data[proto->len] = '\0';
 	kprintf("type[%d], addr[%d], data[%s]\n", proto->type, proto->addr, proto->data);
 	return 0;
@@ -98,7 +99,6 @@ void cmd_poll(void)
 			kprintf("Addr[%d],data[%s]\n", local_dev[i].addr, local_dev[i].data);
 		else
 			kprintf("Empty\n", local_dev[i].addr, local_dev[i].data);
-
 	}
 }
 
