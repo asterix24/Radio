@@ -53,11 +53,11 @@ INLINE uint16_t hw_readVrefint(void)
 /*
  * Return the cpu core temperature in degrees * 100.
  */
-INLINE uint16_t hw_readIntTemp(void)
+INLINE int16_t hw_readIntTemp(void)
 {
-	uint16_t vsens = ADC_RANGECONV(adc_read(ADC_TEMP_CH), 0, 3300);
+	int16_t vsens = ADC_RANGECONV(adc_read(ADC_TEMP_CH), 0, 3300);
 
-	uint16_t temp = (((ADC_TEMP_V25 - vsens) * 1000)/ ADC_TEMP_SLOPE) + ADC_TEMP_CONST;
+	int16_t temp = (((ADC_TEMP_V25 - vsens) * 1000)/ ADC_TEMP_SLOPE) + ADC_TEMP_CONST;
 	return (temp / 10);
 }
 

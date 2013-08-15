@@ -40,6 +40,7 @@
 #include "radio_cfg.h"
 #include "protocol.h"
 #include "cmd.h"
+#include "measure.h"
 
 #include "hw/hw_cc1101.h"
 #include "hw/hw_adc.h"
@@ -76,6 +77,8 @@ static void init(void)
 }
 
 static Protocol proto;
+uint8_t tmp[60];
+
 int main(void)
 {
 	init();
@@ -88,7 +91,8 @@ int main(void)
 		while(1)
 		{
 			kputs("Ready:\n");
-			protocol_poll(&radio.fd);
+			memset(&proto, 0, sizeof(Protocol));
+			protocol_poll(&radio.fd, &proto);
 			cmd_poll();
 		}
 	}
@@ -97,7 +101,10 @@ int main(void)
 		protocol_init(slave_cmd);
 		while (1)
 		{
-			int sent = protocol_broadcast(&radio.fd, &proto, id, (uint8_t *)"primo messaggio", sizeof("primo messaggio"));
+
+			const RadioCfg *cfg = radio_cfg(id);
+
+			int sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
 			kprintf("Sent[%d]\n", sent);
 
 			radio_timeout(&radio, 1000);
@@ -106,13 +113,39 @@ int main(void)
 			int ret = protocol_checkReply(&radio.fd, &proto);
 			if (ret == PROTO_ACK)
 			{
-				kprintf("ACK\n");
-				protocol_data(&radio.fd, &proto, id, (uint8_t *)"data da slave", sizeof("data da slave"));
+				kprintf("ACK, Send data..\n");
+				size_t index = 0;
+
+				for (size_t i = 0; i < cfg->fmt_len; i++)
+				{
+					if (cfg->fmt[i] == 'h')
+					{
+						int16_t d;
+						ASSERT(cfg->callbacks[i]);
+						cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
+						memcpy(&tmp[index], (uint8_t *)&d, sizeof(d));
+						index += sizeof(d);
+						kprintf("%d;", d);
+					}
+					if (cfg->fmt[i] == 'H')
+					{
+						uint16_t d;
+						ASSERT(cfg->callbacks[i]);
+						cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
+						memcpy(&tmp[index], (uint8_t *)&d, sizeof(d));
+						index += sizeof(d);
+						kprintf("%d;", d);
+					}
+				}
+				kputs("\n");
+
+				ASSERT(index <= 60);
+				protocol_data(&radio.fd, &proto, id, tmp, index);
 			}
 			else if (ret == PROTO_NACK)
 			{
 				timer_delay(500);
-				sent = protocol_broadcast(&radio.fd, &proto, id, (uint8_t *)"primo messaggio", sizeof("primo messaggio"));
+				sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
 				kprintf("Sent[%d]\n", sent);
 			}
 			else

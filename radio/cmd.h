@@ -57,17 +57,18 @@
 #define CMD_DEVICES                  5
 
 struct Protocol;
-typedef int (cmd_t)(KFile *fd, struct Protocol *proto);
+typedef int (*cmd_t)(KFile *fd, struct Protocol *proto);
 
 typedef struct Cmd
 {
 	uint8_t id;
-	cmd_t *callback;
+	cmd_t callback;
 } Cmd;
 
 typedef struct Devices
 {
 	uint8_t addr;
+	size_t len;
 	uint8_t data[60];
 } Devices;
 

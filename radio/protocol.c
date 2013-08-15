@@ -44,7 +44,7 @@
 
 const Cmd *proto_cmd;
 
-static cmd_t *protocol_search(Protocol *proto)
+static cmd_t protocol_search(Protocol *proto)
 {
 	for (int i = 0; (proto_cmd[i].id != 0) && (proto_cmd[i].callback != NULL); i++)
 		if (proto->type == proto_cmd[i].id)
@@ -53,7 +53,7 @@ static cmd_t *protocol_search(Protocol *proto)
 	return NULL;
 }
 
-static bool protocol_send(KFile *fd, Protocol *proto, uint8_t type, uint8_t addr, uint8_t *data, size_t len)
+static bool protocol_send(KFile *fd, Protocol *proto, uint8_t type, uint8_t addr, const uint8_t *data, size_t len)
 {
 	ASSERT(len < PROTO_DATALEN);
 
@@ -68,17 +68,17 @@ static bool protocol_send(KFile *fd, Protocol *proto, uint8_t type, uint8_t addr
 	return false;
 }
 
-int protocol_broadcast(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len)
+int protocol_broadcast(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len)
 {
 	return protocol_send(fd, proto, CMD_TYPE_BROADCAST, addr, data, len);
 }
 
-int protocol_reply(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len)
+int protocol_reply(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len)
 {
 	return protocol_send(fd, proto, CMD_TYPE_REPLY, addr, data, len);
 }
 
-int protocol_data(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len)
+int protocol_data(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len)
 {
 	return protocol_send(fd, proto, CMD_TYPE_DATA, addr, data, len);
 }
@@ -106,14 +106,13 @@ int protocol_waitReply(KFile *fd, Protocol *proto)
 	return PROTO_ERR;
 }
 
-void protocol_poll(KFile *fd)
+void protocol_poll(KFile *fd, Protocol *proto)
 {
-	Protocol proto;
-	kfile_read(fd, &proto, sizeof(Protocol));
-	cmd_t *callback = protocol_search(&proto);
+	kfile_read(fd, proto, sizeof(Protocol));
+	cmd_t callback = protocol_search(proto);
 
 	if (callback)
-		callback(fd, &proto);
+		callback(fd, proto);
 }
 
 void protocol_init(const Cmd *table)

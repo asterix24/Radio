@@ -61,6 +61,20 @@
 #define PROTO_WRONG_ADDR    -2
 #define PROTO_TIMEOUT       -3
 
+/*
+ * Protocol data format.
+ * The data should be sent in packed format, the allow type are:
+ *
+ * c: char 8bit
+ * b: signed char 8bit
+ * B: unsigned char 8bit
+ * h: short 16bit
+ * H: unsigned short 16bit
+ * i: int 32bit
+ * I: unsigned int 32bit
+ * ...
+ */
+
 typedef struct Protocol
 {
 	uint8_t type;
@@ -71,11 +85,11 @@ typedef struct Protocol
 
 
 
-int protocol_data(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len);
-int protocol_broadcast(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len);
-int protocol_reply(KFile *fd, Protocol *proto, uint8_t addr, uint8_t *data, size_t len);
+int protocol_data(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len);
+int protocol_broadcast(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len);
+int protocol_reply(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len);
 int protocol_waitReply(KFile *fd, Protocol *proto);
-void protocol_poll(KFile *fd);
+void protocol_poll(KFile *fd, Protocol *proto);
 void protocol_init(const Cmd *table);
 
 /*

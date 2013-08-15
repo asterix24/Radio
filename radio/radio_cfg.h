@@ -38,6 +38,8 @@
 #ifndef RADIO_CFG_H
 #define RADIO_CFG_H
 
+#include "measure.h"
+
 #include <cpu/types.h>
 
 /*
@@ -45,6 +47,15 @@
  */
 #define RADIO_MASTER    0
 
+typedef struct RadioCfg
+{
+	uint8_t id;
+	uint8_t fmt[10];
+	size_t fmt_len;
+	measure_t callbacks[10];
+} RadioCfg;
+
+const RadioCfg *radio_cfg(int id);
 uint8_t radio_cfg_id(void);
 void radio_cfg_init(void);
 

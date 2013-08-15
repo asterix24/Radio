@@ -41,7 +41,7 @@
 
 #include <string.h>
 
-static Protocol local_dev[CMD_DEVICES];
+static Devices local_dev[CMD_DEVICES];
 
 static int cmd_broadcast(KFile *fd, Protocol *proto)
 {
@@ -56,6 +56,7 @@ static int cmd_broadcast(KFile *fd, Protocol *proto)
 		else if (!local_dev[i].addr)
 		{
 			local_dev[i].addr =  proto->addr;
+			local_dev[i].len =  proto->len;
 			memcpy(local_dev[i].data, proto->data, proto->len);
 			reply = PROTO_ACK;
 			break;
@@ -64,8 +65,8 @@ static int cmd_broadcast(KFile *fd, Protocol *proto)
 			reply = PROTO_NACK;
 	}
 
-	proto->data[proto->len] = '\0';
-	kprintf("type[%d], addr[%d], data[%s]\n", proto->type, proto->addr, proto->data);
+	//proto->data[proto->len] = '\0';
+	//kprintf("type[%d], addr[%d], data[%s]\n", proto->type, proto->addr, proto->data);
 
 	if (protocol_reply(fd, proto, proto->addr, &reply, sizeof(reply)))
 		return 0;
@@ -76,14 +77,42 @@ static int cmd_broadcast(KFile *fd, Protocol *proto)
 static int cmd_data(KFile *fd, Protocol *proto)
 {
 	(void)fd;
-	proto->data[proto->len] = '\0';
-	kprintf("type[%d], addr[%d], data[%s]\n", proto->type, proto->addr, proto->data);
+	kprintf("type[%d], addr[%d]\n", proto->type, proto->addr);
+
+	kprintf("Decode data:len[%d]\n", proto->len);
+	for (int i = 0; i < CMD_DEVICES; i++)
+	{
+		if (local_dev[i].addr == proto->addr)
+		{
+			size_t index = 0;
+			kprintf("l[%d],d[%s]\n", local_dev[i].len, local_dev[i].data);
+			for (size_t j = 0; j < local_dev[i].len; j++)
+			{
+				if (local_dev[i].data[j] == 'h')
+				{
+					ASSERT(index <= proto->len);
+					kprintf("%d;", (int16_t)proto->data[index]);
+					index += sizeof(int16_t);
+				}
+				if (local_dev[i].data[j] == 'H')
+				{
+					ASSERT(index <= proto->len);
+					kprintf("%d;", (uint16_t)proto->data[index]);
+					index += sizeof(uint16_t);
+				}
+			}
+
+			break;
+		}
+	}
+	kputs("\n");
+
 	return 0;
 }
 
 const Cmd master_cmd[] = {
 	{ CMD_TYPE_BROADCAST, cmd_broadcast },
-	{ CMD_TYPE_DATA,      cmd_data },
+	{ CMD_TYPE_DATA,      cmd_data      },
 	{ 0   , NULL }
 };
 
@@ -95,10 +124,12 @@ void cmd_poll(void)
 {
 	for (int i = 0; i < CMD_DEVICES; i++)
 	{
+		kprintf("%d: ", i);
 		if (local_dev[i].addr)
-			kprintf("Addr[%d],data[%s]\n", local_dev[i].addr, local_dev[i].data);
+			kprintf("Addr[%d],data[%s],len[%d]\n", local_dev[i].addr, local_dev[i].data, local_dev[i].len);
 		else
 			kprintf("Empty\n");
 	}
+	kputs("-----\n");
 }
 

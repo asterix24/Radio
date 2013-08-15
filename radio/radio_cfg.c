@@ -36,6 +36,7 @@
  */
 
 #include "radio_cfg.h"
+#include "measure.h"
 
 #include <cfg/macros.h>
 
@@ -56,11 +57,37 @@
                     RADIO_CFG_ID2 | \
                     RADIO_CFG_ID3)
 
-#define RADIO_HW_INIT() \
-do { \
-	RCC->APB2ENR |= RCC_APB2_GPIOB;			\
-	stm32_gpioPinConfig(((struct stm32_gpio *)GPIOB_BASE), RADIO_ID, GPIO_MODE_IPU, GPIO_SPEED_50MHZ); \
-} while (0)
+
+const RadioCfg radio_cfg_table[] =
+{
+	{ 1, "hH", sizeof("hH"),
+		{
+			measure_intTemp,
+			measure_intVref,
+			NULL,
+		},
+	},
+	{ 2, "hH", sizeof("hH"),
+		{
+			measure_intTemp,
+			measure_intVref,
+			NULL,
+		},
+	},
+	{ 3, "hH", sizeof("hH"),
+		{
+			measure_intTemp,
+			measure_intVref,
+			NULL,
+		},
+	},
+	{ 0, "", 0,
+		{
+			NULL,
+		},
+	},
+};
+
 
 /*
  * Get the device id
@@ -70,9 +97,21 @@ uint8_t radio_cfg_id(void)
 	return stm32_gpioPinRead(((struct stm32_gpio *)GPIOB_BASE), BV(5) | BV(6)) >> 5;
 }
 
+const RadioCfg *radio_cfg(int id)
+{
+	for (int i = 0; radio_cfg_table[i].id && radio_cfg_table[i].fmt; i++)
+	{
+		if (id == radio_cfg_table[i].id)
+			return &radio_cfg_table[i];
+	}
+
+	return NULL;
+}
+
 void radio_cfg_init(void)
 {
-	RADIO_HW_INIT();
+	RCC->APB2ENR |= RCC_APB2_GPIOB;
+	stm32_gpioPinConfig(((struct stm32_gpio *)GPIOB_BASE), RADIO_ID, GPIO_MODE_IPU, GPIO_SPEED_50MHZ);
 }
 
 
