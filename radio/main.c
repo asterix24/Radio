@@ -90,10 +90,10 @@ int main(void)
 		protocol_init(master_cmd);
 		while(1)
 		{
-			kputs("Ready:\n");
+			//kputs("Ready:\n");
 			memset(&proto, 0, sizeof(Protocol));
 			protocol_poll(&radio.fd, &proto);
-			cmd_poll();
+			//cmd_poll();
 		}
 	}
 	else

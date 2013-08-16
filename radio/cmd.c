@@ -74,30 +74,36 @@ static int cmd_broadcast(KFile *fd, Protocol *proto)
 	return -1;
 }
 
-static int cmd_data(KFile *fd, Protocol *proto)
+static int cmd_data(KFile *_fd, Protocol *proto)
 {
-	(void)fd;
-	kprintf("type[%d], addr[%d]\n", proto->type, proto->addr);
+	//kprintf("type[%d], addr[%d]\n", proto->type, proto->addr);
 
-	kprintf("Decode data:len[%d]\n", proto->len);
-	for (int i = 0; i < CMD_DEVICES; i++)
+	//kprintf("Decode data:len[%d]\n", proto->len);
+	Radio *fd = RADIO_CAST(_fd);
+	kprintf("%d;%d;%d;", proto->addr, fd->lqi, fd->rssi);
+	int i = 0;
+	for (i = 0; i < CMD_DEVICES; i++)
 	{
 		if (local_dev[i].addr == proto->addr)
 		{
 			size_t index = 0;
-			kprintf("l[%d],d[%s]\n", local_dev[i].len, local_dev[i].data);
+			//kprintf("l[%d],d[%s]\n", local_dev[i].len, local_dev[i].data);
 			for (size_t j = 0; j < local_dev[i].len; j++)
 			{
 				if (local_dev[i].data[j] == 'h')
 				{
 					ASSERT(index <= proto->len);
-					kprintf("%d;", (int16_t)proto->data[index]);
+					int16_t d;
+					memcpy(&d, &proto->data[index], sizeof(int16_t));
+					kprintf("%d;", d);
 					index += sizeof(int16_t);
 				}
 				if (local_dev[i].data[j] == 'H')
 				{
 					ASSERT(index <= proto->len);
-					kprintf("%d;", (uint16_t)proto->data[index]);
+					uint16_t d;
+					memcpy(&d, &proto->data[index], sizeof(uint16_t));
+					kprintf("%d;", d);
 					index += sizeof(uint16_t);
 				}
 			}
@@ -105,6 +111,8 @@ static int cmd_data(KFile *fd, Protocol *proto)
 			break;
 		}
 	}
+	/* Remove from list served devices */
+	memset(&local_dev[i], 0, sizeof(Devices));
 	kputs("\n");
 
 	return 0;
