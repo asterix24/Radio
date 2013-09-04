@@ -74,7 +74,7 @@ static int cmd_broadcast(KFile *fd, Protocol *proto)
 	return -1;
 }
 
-static int cmd_data(KFile *_fd, Protocol *proto)
+static int cmd_recvData(KFile *_fd, Protocol *proto)
 {
 	//kprintf("type[%d], addr[%d]\n", proto->type, proto->addr);
 
@@ -120,11 +120,16 @@ static int cmd_data(KFile *_fd, Protocol *proto)
 
 const Cmd master_cmd[] = {
 	{ CMD_TYPE_BROADCAST, cmd_broadcast },
-	{ CMD_TYPE_DATA,      cmd_data      },
+	{ CMD_TYPE_RECV_DATA, cmd_recvData  },
 	{ 0   , NULL }
 };
 
+static int cmd_sendData(KFile *_fd, Protocol *proto)
+{
+}
+
 const Cmd slave_cmd[] = {
+	{ CMD_TYPE_SEND_DATA, cmd_sendData },
 	{ 0     , NULL }
 };
 
