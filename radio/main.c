@@ -60,6 +60,7 @@
 #include <string.h>
 
 static Radio radio;
+static const RadioCfg *cfg;
 
 static void init(void)
 {
@@ -99,17 +100,27 @@ int main(void)
 	else
 	{
 		protocol_init(slave_cmd);
+
 		while (1)
 		{
-
-			const RadioCfg *cfg = radio_cfg(id);
-
-			int sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
-			kprintf("Sent[%d]\n", sent);
-
-			radio_timeout(&radio, 1000);
-
+			//Clean up message
 			memset(&proto, 0, sizeof(Protocol));
+			/*
+			 * Vedere se può avere senso aspettare eventuali
+			 * messaggi per un po' di tempo prima di inviare un broadcast
+			 */
+			//radio_timeout(&radio, 5000);
+
+			/* Send first bradcast message with us configuration */
+			cfg = radio_cfg(id);
+			int sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
+			kprintf("Sent broadcast[%d]\n", sent);
+
+			// Check message from master
+			radio_timeout(&radio, 5000);
+			protocol_poll(&radio.fd, &proto);
+
+			//Da spostare nei comandi dello slave.
 			int ret = protocol_checkReply(&radio.fd, &proto);
 			if (ret == PROTO_ACK)
 			{
@@ -152,8 +163,6 @@ int main(void)
 			{
 				kprintf("err[%d]\n", ret);
 			}
-
-			timer_delay(5000);
 		}
 	}
 
