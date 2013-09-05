@@ -111,6 +111,10 @@ int main(void)
 			 */
 			//radio_timeout(&radio, 5000);
 
+			/* Rispondere con lo stesso tipo del messaggio. Rimuovere
+			 * il tipo cmd_type per le risposte generiche
+			 */
+
 			/* Send first broadcast message with us configuration */
 			cfg = radio_cfg(id);
 			int sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
