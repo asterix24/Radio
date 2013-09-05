@@ -94,7 +94,7 @@ int main(void)
 			//kputs("Ready:\n");
 			memset(&proto, 0, sizeof(Protocol));
 			protocol_poll(&radio.fd, &proto);
-			//cmd_poll();
+			cmd_poll();
 		}
 	}
 	else
@@ -111,7 +111,7 @@ int main(void)
 			 */
 			//radio_timeout(&radio, 5000);
 
-			/* Send first bradcast message with us configuration */
+			/* Send first broadcast message with us configuration */
 			cfg = radio_cfg(id);
 			int sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
 			kprintf("Sent broadcast[%d]\n", sent);
@@ -119,50 +119,6 @@ int main(void)
 			// Check message from master
 			radio_timeout(&radio, 5000);
 			protocol_poll(&radio.fd, &proto);
-
-			//Da spostare nei comandi dello slave.
-			int ret = protocol_checkReply(&radio.fd, &proto);
-			if (ret == PROTO_ACK)
-			{
-				kprintf("ACK, Send data..\n");
-				size_t index = 0;
-
-				for (size_t i = 0; i < cfg->fmt_len; i++)
-				{
-					if (cfg->fmt[i] == 'h')
-					{
-						int16_t d;
-						ASSERT(cfg->callbacks[i]);
-						cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
-						memcpy(&tmp[index], (uint8_t *)&d, sizeof(d));
-						index += sizeof(d);
-						kprintf("%d;", d);
-					}
-					if (cfg->fmt[i] == 'H')
-					{
-						uint16_t d;
-						ASSERT(cfg->callbacks[i]);
-						cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
-						memcpy(&tmp[index], (uint8_t *)&d, sizeof(d));
-						index += sizeof(d);
-						kprintf("%d;", d);
-					}
-				}
-				kputs("\n");
-
-				ASSERT(index <= 60);
-				protocol_data(&radio.fd, &proto, id, tmp, index);
-			}
-			else if (ret == PROTO_NACK)
-			{
-				timer_delay(500);
-				sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
-				kprintf("Sent[%d]\n", sent);
-			}
-			else
-			{
-				kprintf("err[%d]\n", ret);
-			}
 		}
 	}
 

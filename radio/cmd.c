@@ -43,6 +43,10 @@
 
 static Devices local_dev[CMD_DEVICES];
 
+/*
+ * MASTER COMMAND FUNCTIONS
+ */
+
 static int cmd_broadcast(KFile *fd, Protocol *proto)
 {
 	uint8_t reply = 0;
@@ -119,17 +123,71 @@ static int cmd_recvData(KFile *_fd, Protocol *proto)
 }
 
 const Cmd master_cmd[] = {
-	{ CMD_TYPE_BROADCAST, cmd_broadcast },
-	{ CMD_TYPE_RECV_DATA, cmd_recvData  },
+	{ CMD_TYPE_BROADCAST, cmd_broadcast     },
+	{ CMD_TYPE_RECV_DATA, cmd_recvData      },
 	{ 0   , NULL }
 };
+
+
+/*
+ * SLAVE COMMAND FUNCTIONS
+ */
+
 
 static int cmd_sendData(KFile *_fd, Protocol *proto)
 {
 }
 
+static int cmd_reply(KFile *_fd, Protocol *proto)
+{
+	//Da spostare nei comandi dello slave.
+	int ret = protocol_checkReply(&radio.fd, &proto);
+	if (ret == PROTO_ACK)
+	{
+		kprintf("ACK, Send data..\n");
+		size_t index = 0;
+
+		for (size_t i = 0; i < cfg->fmt_len; i++)
+		{
+			if (cfg->fmt[i] == 'h')
+			{
+				int16_t d;
+				ASSERT(cfg->callbacks[i]);
+				cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
+				memcpy(&tmp[index], (uint8_t *)&d, sizeof(d));
+				index += sizeof(d);
+				kprintf("%d;", d);
+			}
+			if (cfg->fmt[i] == 'H')
+			{
+				uint16_t d;
+				ASSERT(cfg->callbacks[i]);
+				cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
+				memcpy(&tmp[index], (uint8_t *)&d, sizeof(d));
+				index += sizeof(d);
+				kprintf("%d;", d);
+			}
+		}
+		kputs("\n");
+
+		ASSERT(index <= 60);
+		protocol_data(&radio.fd, &proto, id, tmp, index);
+	}
+	else if (ret == PROTO_NACK)
+	{
+		timer_delay(500);
+		sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
+		kprintf("Sent[%d]\n", sent);
+	}
+	else
+	{
+		kprintf("err[%d]\n", ret);
+	}
+}
+
 const Cmd slave_cmd[] = {
-	{ CMD_TYPE_SEND_DATA, cmd_sendData },
+	{ CMD_TYPE_SEND_DATA, cmd_sendData }, /* Send all measure to master */
+	{ CMD_TYPE_REPLY,     cmd_reply    }, /* Check reply from master    */
 	{ 0     , NULL }
 };
 
