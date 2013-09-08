@@ -48,9 +48,7 @@
  * Message type
  */
 #define CMD_TYPE_BROADCAST        0xFF
-#define CMD_TYPE_REPLY             0x1
-#define CMD_TYPE_RECV_DATA         0x2
-#define CMD_TYPE_SEND_DATA         0x3
+#define CMD_TYPE_DATA              0x1
 
 /*
  * Settings

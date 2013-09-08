@@ -100,29 +100,19 @@ int main(void)
 	else
 	{
 		protocol_init(slave_cmd);
-
 		while (1)
 		{
 			//Clean up message
 			memset(&proto, 0, sizeof(Protocol));
-			/*
-			 * Vedere se può avere senso aspettare eventuali
-			 * messaggi per un po' di tempo prima di inviare un broadcast
-			 */
-			//radio_timeout(&radio, 5000);
-
-			/* Rispondere con lo stesso tipo del messaggio. Rimuovere
-			 * il tipo cmd_type per le risposte generiche
-			 */
+			// Check message from master
+			radio_timeout(&radio, 5000);
+			protocol_poll(&radio.fd, &proto);
 
 			/* Send first broadcast message with us configuration */
 			cfg = radio_cfg(id);
 			int sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
 			kprintf("Sent broadcast[%d]\n", sent);
 
-			// Check message from master
-			radio_timeout(&radio, 5000);
-			protocol_poll(&radio.fd, &proto);
 		}
 	}
 

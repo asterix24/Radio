@@ -47,7 +47,7 @@ static Devices local_dev[CMD_DEVICES];
  * MASTER COMMAND FUNCTIONS
  */
 
-static int cmd_broadcast(KFile *fd, Protocol *proto)
+static int cmd_master_broadcast(KFile *fd, Protocol *proto)
 {
 	uint8_t reply = 0;
 	for (int i = 0; i < 5; i++)
@@ -78,7 +78,7 @@ static int cmd_broadcast(KFile *fd, Protocol *proto)
 	return -1;
 }
 
-static int cmd_recvData(KFile *_fd, Protocol *proto)
+static int cmd_master_data(KFile *_fd, Protocol *proto)
 {
 	//kprintf("type[%d], addr[%d]\n", proto->type, proto->addr);
 
@@ -123,8 +123,8 @@ static int cmd_recvData(KFile *_fd, Protocol *proto)
 }
 
 const Cmd master_cmd[] = {
-	{ CMD_TYPE_BROADCAST, cmd_broadcast     },
-	{ CMD_TYPE_RECV_DATA, cmd_recvData      },
+	{ CMD_TYPE_BROADCAST, cmd_master_broadcast     },
+	{ CMD_TYPE_DATA, cmd_master_data      },
 	{ 0   , NULL }
 };
 
@@ -134,16 +134,8 @@ const Cmd master_cmd[] = {
  */
 
 
-static int cmd_sendData(KFile *_fd, Protocol *proto)
+static int cmd_slave_data(KFile *_fd, Protocol *proto)
 {
-}
-
-static int cmd_reply(KFile *_fd, Protocol *proto)
-{
-	//Da spostare nei comandi dello slave.
-	int ret = protocol_checkReply(&radio.fd, &proto);
-	if (ret == PROTO_ACK)
-	{
 		kprintf("ACK, Send data..\n");
 		size_t index = 0;
 
@@ -172,22 +164,38 @@ static int cmd_reply(KFile *_fd, Protocol *proto)
 
 		ASSERT(index <= 60);
 		protocol_data(&radio.fd, &proto, id, tmp, index);
-	}
-	else if (ret == PROTO_NACK)
+}
+
+static int cmd_slave_broadcast(KFile *_fd, Protocol *proto)
+{
+	int ret = protocol_checkReply(&radio.fd, &proto);
+	if (ret == PROTO_ACK)
 	{
-		timer_delay(500);
+		// Rimango in attesa del prossimo comando
+		// dal master, non vado in stop mode
+		// disattivare il watchdog.
+		// o attivare il timer per farlo resettare.
+		return 0;
+	}
+
+	/*
+	 * Riprovo a inviare il messaggio di broadcast
+	 * tra un po' di tempo perchè il master è occupato
+	 * o non ha capito.
+	 */
+	if (ret == PROTO_NACK)
+	{
 		sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
 		kprintf("Sent[%d]\n", sent);
 	}
-	else
-	{
-		kprintf("err[%d]\n", ret);
-	}
+
+	kprintf("err[%d]\n", ret);
+	return ret;
 }
 
 const Cmd slave_cmd[] = {
-	{ CMD_TYPE_SEND_DATA, cmd_sendData }, /* Send all measure to master */
-	{ CMD_TYPE_REPLY,     cmd_reply    }, /* Check reply from master    */
+	{ CMD_TYPE_BROADCAST,     cmd_slave_broadcast    }, /* Check reply from master    */
+	{ CMD_TYPE_DATA, cmd_slave_data }, /* Send all measure to master */
 	{ 0     , NULL }
 };
 
