@@ -39,6 +39,7 @@
 #define RADIO_CMD_H
 
 #include "protocol.h"
+#include "radio_cfg.h"
 
 #include <io/kfile.h>
 
@@ -66,6 +67,8 @@ typedef struct Cmd
 
 typedef struct Devices
 {
+	uint8_t status;
+	uint8_t type;
 	uint8_t addr;
 	size_t len;
 	uint8_t data[60];
@@ -78,6 +81,7 @@ extern const Cmd slave_cmd[];
 
 //void cmd_init();
 void cmd_poll(void);
+void cmd_init(const RadioCfg *cfg);
 
 #endif /* RADIO_CMD_H */
 

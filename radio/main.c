@@ -60,7 +60,7 @@
 #include <string.h>
 
 static Radio radio;
-static const RadioCfg *cfg;
+static Protocol proto;
 
 static void init(void)
 {
@@ -77,14 +77,21 @@ static void init(void)
 
 }
 
-static Protocol proto;
-uint8_t tmp[60];
 
 int main(void)
 {
 	init();
+	/* Send first broadcast message with us configuration */
 	uint8_t id = radio_cfg_id();
+	const RadioCfg *cfg = radio_cfg(id);
+	cmd_init(cfg);
 
+	/*
+	 * creare un loop di comandi che si salva lo stato del comando
+	 * che è arrivato, e chiamare la callback giusta.
+	 * unificare le tabelle dei comandi, non è necessario dividerli
+	 *
+	 */
 	kprintf("%s [%d]\n", id == RADIO_MASTER ? "MASTER" : "SLAVE", id);
 	if (id == RADIO_MASTER)
 	{
@@ -100,18 +107,19 @@ int main(void)
 	else
 	{
 		protocol_init(slave_cmd);
+
+		int sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
+		kprintf("Sent broadcast[%d]\n", sent);
+
 		while (1)
 		{
 			//Clean up message
 			memset(&proto, 0, sizeof(Protocol));
+
 			// Check message from master
 			radio_timeout(&radio, 5000);
 			protocol_poll(&radio.fd, &proto);
 
-			/* Send first broadcast message with us configuration */
-			cfg = radio_cfg(id);
-			int sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
-			kprintf("Sent broadcast[%d]\n", sent);
 
 		}
 	}

@@ -73,14 +73,9 @@ int protocol_broadcast(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *
 	return protocol_send(fd, proto, CMD_TYPE_BROADCAST, addr, data, len);
 }
 
-int protocol_reply(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len)
-{
-	return protocol_send(fd, proto, CMD_TYPE_REPLY, addr, data, len);
-}
-
 int protocol_data(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len)
 {
-	return protocol_send(fd, proto, CMD_TYPE_SEND_DATA, addr, data, len);
+	return protocol_send(fd, proto, CMD_TYPE_DATA, addr, data, len);
 }
 
 int protocol_waitReply(KFile *fd, Protocol *proto)

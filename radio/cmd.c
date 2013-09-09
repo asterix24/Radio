@@ -36,12 +36,14 @@
  */
 
 #include "protocol.h"
+#include "radio_cfg.h"
 
 #include <cfg/debug.h>
 
 #include <string.h>
 
 static Devices local_dev[CMD_DEVICES];
+const RadioCfg *radio_cfg;
 
 /*
  * MASTER COMMAND FUNCTIONS
@@ -199,8 +201,84 @@ const Cmd slave_cmd[] = {
 	{ 0     , NULL }
 };
 
-void cmd_poll(void)
+void cmd_loop(KFile *fd, Protocol *proto)
 {
+	kfile_read(fd, proto, sizeof(Protocol));
+
+	/*
+	 * Check errors on received packet.
+	 */
+	int ret = kfile_error(fd);
+	if (ret < 0)
+	{
+		kfile_clearerr(fd);
+		if (ret == RADIO_RX_TIMEOUT)
+			return PROTO_TIMEOUT;
+
+		return PROTO_ERR;
+	}
+
+	/*
+	 * Ok, lets go to see if packet is for us, and
+	 * save the status in devices list.
+	 */
+	ASSERT(proto);
+	/* se sono slave devo vedere se il pacchetto è per me */
+	if (slave)
+		slave_id == proto->addr;
+		continue
+
+	/* se il pacchetto è per me cerco nella lista se ho ricevuto
+	 * il messaggio in precedenza */
+	for (int i = 0; i < CMD_DEVICES; i++)
+	{
+		if (local_dev[i].type == proto->type)
+		{
+			break;
+		}
+		/*
+		 * cerco nella lista, se non c'è l'aggiungo con stato new,
+		 * altrimenti verifico lo stato.
+		 *
+		 * Ogni comando che invio deve aggiornare lo stato dei devices
+		 * in modo da capire se quando mi arriva il messaggio, questo è
+		 * una risposta o un nuovo messaggio da processare.
+		 * la stessa cosa la deve fare il master.
+		 *
+		 */
+
+
+
+		if (local_dev[i].addr == proto->addr)
+		{
+			reply = PROTO_ACK;
+			break;
+		}
+		else if (!local_dev[i].addr)
+		{
+			local_dev[i].addr =  proto->addr;
+			local_dev[i].len =  proto->len;
+			memcpy(local_dev[i].data, proto->data, proto->len);
+			reply = PROTO_ACK;
+			break;
+		}
+		else
+			reply = PROTO_NACK;
+	}
+
+	// verificare
+	if (proto->type == CMD_TYPE_REPLY)
+		return PROTO_OK;
+	else
+		return PROTO_WRONG_ADDR;
+
+	return PROTO_ERR;
+
+	cmd_t callback = protocol_search(proto);
+
+	if (callback)
+		callback(fd, proto);
+
 	for (int i = 0; i < CMD_DEVICES; i++)
 	{
 		kprintf("%d: ", i);
@@ -212,3 +290,7 @@ void cmd_poll(void)
 	kputs("-----\n");
 }
 
+void cmd_init(const RadioCfg *cfg)
+{
+	radio_cfg = cfg;
+}
