@@ -88,7 +88,7 @@ int main(void)
 	if (id == RADIO_MASTER)
 	{
 		protocol_init(master_cmd);
-		while(1)
+		while (1)
 		{
 			//kputs("Ready:\n");
 			memset(&proto, 0, sizeof(Protocol));
@@ -114,31 +114,8 @@ int main(void)
 			if (ret == PROTO_ACK)
 			{
 				kprintf("ACK, Send data..\n");
-				size_t index = 0;
 
-				for (size_t i = 0; i < cfg->fmt_len; i++)
-				{
-					if (cfg->fmt[i] == 'h')
-					{
-						int16_t d;
-						ASSERT(cfg->callbacks[i]);
-						cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
-						memcpy(&tmp[index], (uint8_t *)&d, sizeof(d));
-						index += sizeof(d);
-						kprintf("%d;", d);
-					}
-					if (cfg->fmt[i] == 'H')
-					{
-						uint16_t d;
-						ASSERT(cfg->callbacks[i]);
-						cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
-						memcpy(&tmp[index], (uint8_t *)&d, sizeof(d));
-						index += sizeof(d);
-						kprintf("%d;", d);
-					}
-				}
-				kputs("\n");
-
+				protocol_encode(&proto, tmp, sizeof(tmp));
 				ASSERT(index <= 60);
 				protocol_data(&radio.fd, &proto, id, tmp, index);
 			}

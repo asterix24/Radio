@@ -89,7 +89,9 @@ int protocol_data(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data,
 int protocol_broadcast(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len);
 int protocol_reply(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len);
 int protocol_waitReply(KFile *fd, Protocol *proto);
-void protocol_poll(KFile *fd, Protocol *proto);
+int protocol_decode(Radio *fd, Protocol *proto);
+int protocol_encode(Protocol *proto, uint8_t buf, size_t len);
+int protocol_poll(KFile *fd, Protocol *proto);
 void protocol_init(const Cmd *table);
 
 /*

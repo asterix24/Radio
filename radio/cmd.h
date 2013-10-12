@@ -47,14 +47,21 @@
 /*
  * Message type
  */
-#define CMD_TYPE_BROADCAST        0xFF
-#define CMD_TYPE_REPLY             0x1
-#define CMD_TYPE_DATA              0x2
+#define CMD_BROADCAST        0xFF
+#define CMD_WAIT             0x1
+#define CMD_SLEEP            0x2
+#define CMD_DATA             0x3
+
+/*
+ * Device status
+ */
+#define CMD_NEW_DEV                  1
 
 /*
  * Settings
  */
 #define CMD_DEVICES                  5
+#define CMD_TICKS                 1000
 
 struct Protocol;
 typedef int (*cmd_t)(KFile *fd, struct Protocol *proto);
@@ -68,8 +75,8 @@ typedef struct Cmd
 typedef struct Devices
 {
 	uint8_t addr;
-	size_t len;
-	uint8_t data[60];
+	uint8_t status;
+	ticks_t ticks;
 } Devices;
 
 
@@ -78,7 +85,7 @@ extern const Cmd master_cmd[];
 extern const Cmd slave_cmd[];
 
 //void cmd_init();
-void cmd_poll(void);
+//int cmd_poll(void);
 
 #endif /* RADIO_CMD_H */
 
