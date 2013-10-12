@@ -45,12 +45,11 @@ static Devices local_dev[CMD_DEVICES];
 
 static int cmd_master_broadcast(KFile *fd, Protocol *proto)
 {
-	uint8_t reply = 0;
+	uint8_t reply = PROTO_ACK;
 	for (int i = 0; i < CMD_DEVICES; i++)
 	{
 		if (local_dev[i].addr == proto->addr)
 		{
-			reply = PROTO_ACK;
 			break;
 		}
 		else if (!local_dev[i].addr)
@@ -58,20 +57,18 @@ static int cmd_master_broadcast(KFile *fd, Protocol *proto)
 			local_dev[i].addr =  proto->addr;
 			local_dev[i].status = CMD_NEW_DEV;
 			local_dev[i].ticks = CMD_TICKS;
-			reply = PROTO_ACK;
 			break;
 		}
 		else
+		{
 			reply = PROTO_NACK;
+		}
 	}
 
 	//proto->data[proto->len] = '\0';
 	//kprintf("type[%d], addr[%d], data[%s]\n", proto->type, proto->addr, proto->data);
 
-	if (protocol_reply(fd, proto, proto->addr, &reply, sizeof(reply)))
-		return 0;
-
-	return -1;
+	return protocol_send(fd, proto, proto->type, proto->addr, &reply, sizeof(reply));
 }
 
 static int cmd_master_data(KFile *_fd, Protocol *proto)
@@ -87,7 +84,12 @@ const Cmd master_cmd[] = {
 	{ 0   , NULL }
 };
 
-static int cmd_master_broadcast(KFile *fd, Protocol *proto)
+static int cmd_slave_broadcast(KFile *fd, Protocol *proto)
+{
+	return 0;
+}
+
+static int cmd_slave_data(KFile *fd, Protocol *proto)
 {
 	return 0;
 }
@@ -104,7 +106,7 @@ void cmd_poll(void)
 	{
 		kprintf("%d: ", i);
 		if (local_dev[i].addr)
-			kprintf("Addr[%d],status[%s],ticks[%d]\n", local_dev[i].addr, local_dev[i].status, local_dev[i].ticks);
+			kprintf("Addr[%d],status[%d],ticks[%ld]\n", local_dev[i].addr, local_dev[i].status, local_dev[i].ticks);
 		else
 			kprintf("Empty\n");
 	}

@@ -37,6 +37,7 @@
 
 #include "protocol.h"
 #include "cmd.h"
+#include "radio_cfg.h"
 
 #include <cfg/debug.h>
 
@@ -52,8 +53,21 @@ static cmd_t protocol_search(Protocol *proto)
 
 	return NULL;
 }
+INLINE int check_err(KFile *fd)
+{
+	int ret = kfile_error(fd);
+	if (ret < 0)
+	{
+		kfile_clearerr(fd);
+		if (ret == RADIO_RX_TIMEOUT)
+			return PROTO_TIMEOUT;
 
-static bool protocol_send(KFile *fd, Protocol *proto, uint8_t type, uint8_t addr, const uint8_t *data, size_t len)
+		return PROTO_ERR;
+	}
+	return ret;
+}
+
+int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, const uint8_t *data, size_t len)
 {
 	ASSERT(len < PROTO_DATALEN);
 
@@ -62,62 +76,18 @@ static bool protocol_send(KFile *fd, Protocol *proto, uint8_t type, uint8_t addr
 	proto->len = len;
 	memcpy(proto->data, data, len);
 
-	if (kfile_write(fd, proto, sizeof(Protocol)) > 0)
-		return true;
+	kfile_write(fd, proto, sizeof(Protocol));
 
-	return false;
+	return check_err(fd);
 }
 
-int protocol_broadcast(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len)
-{
-	return protocol_send(fd, proto, CMD_TYPE_BROADCAST, addr, data, len);
-}
-
-int protocol_reply(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len)
-{
-	return protocol_send(fd, proto, CMD_TYPE_REPLY, addr, data, len);
-}
-
-int protocol_data(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len)
-{
-	return protocol_send(fd, proto, CMD_TYPE_DATA, addr, data, len);
-}
-
-int protocol_waitReply(KFile *fd, Protocol *proto)
-{
-	kfile_read(fd, proto, sizeof(Protocol));
-
-	int ret = kfile_error(fd);
-	if (ret < 0)
-	{
-		kfile_clearerr(fd);
-		if (ret == RADIO_RX_TIMEOUT)
-			return PROTO_TIMEOUT;
-
-		return PROTO_ERR;
-	}
-
-	ASSERT(proto);
-	if (proto->type == CMD_TYPE_REPLY)
-		return PROTO_OK;
-	else
-		return PROTO_WRONG_ADDR;
-
-	return PROTO_ERR;
-}
 
 int protocol_poll(KFile *fd, Protocol *proto)
 {
 	kfile_read(fd, proto, sizeof(Protocol));
-	int ret = kfile_error(fd);
+	int ret = check_err(fd);
 	if (ret < 0)
-	{
-		kfile_clearerr(fd);
-		if (ret == RADIO_RX_TIMEOUT)
-			return PROTO_TIMEOUT;
-
-		return PROTO_ERR;
-	}
+		return ret;
 
 	ASSERT(proto);
 
@@ -134,7 +104,7 @@ int protocol_poll(KFile *fd, Protocol *proto)
 }
 
 
-int protocol_decode(Radio *fd, Protocol *proto)
+void protocol_decode(Radio *fd, Protocol *proto)
 {
 	kprintf("Decode data:len[%d]\n", proto->len);
 	uint8_t id = radio_cfg_id();
@@ -167,8 +137,11 @@ int protocol_decode(Radio *fd, Protocol *proto)
 }
 
 
-int protocol_encode(Protocol *proto, uint8_t buf, size_t len)
+void protocol_encode(Protocol *proto, uint8_t *buf, size_t len)
 {
+	kprintf("encode data:len[%d]\n", proto->len);
+	uint8_t id = radio_cfg_id();
+	const RadioCfg *cfg = radio_cfg(id);
 	kputs("$");
 	size_t index = 0;
 	for (size_t i = 0; i < cfg->fmt_len; i++)

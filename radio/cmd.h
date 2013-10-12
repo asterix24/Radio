@@ -85,7 +85,7 @@ extern const Cmd master_cmd[];
 extern const Cmd slave_cmd[];
 
 //void cmd_init();
-//int cmd_poll(void);
+void cmd_poll(void);
 
 #endif /* RADIO_CMD_H */
 

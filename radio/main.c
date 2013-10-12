@@ -109,6 +109,7 @@ int main(void)
 
 			radio_timeout(&radio, 1000);
 
+			/*
 			memset(&proto, 0, sizeof(Protocol));
 			int ret = protocol_checkReply(&radio.fd, &proto);
 			if (ret == PROTO_ACK)
@@ -116,7 +117,6 @@ int main(void)
 				kprintf("ACK, Send data..\n");
 
 				protocol_encode(&proto, tmp, sizeof(tmp));
-				ASSERT(index <= 60);
 				protocol_data(&radio.fd, &proto, id, tmp, index);
 			}
 			else if (ret == PROTO_NACK)
@@ -129,6 +129,7 @@ int main(void)
 			{
 				kprintf("err[%d]\n", ret);
 			}
+			*/
 
 			timer_delay(5000);
 		}
