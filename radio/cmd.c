@@ -39,6 +39,8 @@
 
 #include <cfg/debug.h>
 
+#include <drv/timer.h>
+
 #include <string.h>
 
 static Devices local_dev[CMD_DEVICES];
@@ -56,7 +58,7 @@ static int cmd_master_broadcast(KFile *fd, Protocol *proto)
 		{
 			local_dev[i].addr =  proto->addr;
 			local_dev[i].status = CMD_NEW_DEV;
-			local_dev[i].ticks = CMD_TICKS;
+			local_dev[i].timeout = timer_clock();
 			break;
 		}
 		else
@@ -86,6 +88,7 @@ const Cmd master_cmd[] = {
 
 static int cmd_slave_broadcast(KFile *fd, Protocol *proto)
 {
+	kprintf("Broadcast reply[%s]\n", proto->data[0] == PROTO_ACK ? "ACK" : "NACK");
 	return 0;
 }
 
@@ -100,15 +103,37 @@ const Cmd slave_cmd[] = {
 	{ 0     , NULL }
 };
 
-void cmd_poll(void)
+void cmd_poll(KFile *fd, Protocol *proto)
 {
 	for (int i = 0; i < CMD_DEVICES; i++)
 	{
 		kprintf("%d: ", i);
 		if (local_dev[i].addr)
-			kprintf("Addr[%d],status[%d],ticks[%ld]\n", local_dev[i].addr, local_dev[i].status, local_dev[i].ticks);
+		{
+			if (ticks_to_ms(timer_clock() - local_dev[i].timeout) > CMD_TIMEOUT)
+			{
+				memset(&local_dev[i], 0, sizeof(Devices));
+				continue;
+			}
+
+			kprintf("Addr[%d],status[%d],ticks[%ld]\n", local_dev[i].addr, local_dev[i].status, local_dev[i].timeout);
+			if (local_dev[i].status == CMD_NEW_DEV)
+			{
+				int ret = protocol_send(fd, proto, CMD_DATA, local_dev[i].addr, (const uint8_t *)"data_query", sizeof("data_query"));
+				if (ret < 0)
+					continue;
+
+				local_dev[i].status = CMD_WAIT_DEV;
+				continue;
+			}
+			if (local_dev[i].status == CMD_WAIT_DEV)
+			{
+			}
+		}
 		else
+		{
 			kprintf("Empty\n");
+		}
 	}
 	kputs("-----\n");
 }

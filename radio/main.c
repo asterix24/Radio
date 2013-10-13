@@ -83,8 +83,8 @@ int main(void)
 {
 	init();
 	uint8_t id = radio_cfg_id();
-
 	kprintf("%s [%d]\n", id == RADIO_MASTER ? "MASTER" : "SLAVE", id);
+
 	if (id == RADIO_MASTER)
 	{
 		protocol_init(master_cmd);
@@ -93,7 +93,8 @@ int main(void)
 			//kputs("Ready:\n");
 			memset(&proto, 0, sizeof(Protocol));
 			protocol_poll(&radio.fd, &proto);
-			//cmd_poll();
+			memset(&proto, 0, sizeof(Protocol));
+			cmd_poll(&radio.fd, &proto);
 		}
 	}
 	else

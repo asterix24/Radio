@@ -56,12 +56,13 @@
  * Device status
  */
 #define CMD_NEW_DEV                  1
+#define CMD_WAIT_DEV                 2
 
 /*
  * Settings
  */
 #define CMD_DEVICES                  5
-#define CMD_TICKS                 1000
+#define CMD_TIMEOUT               1000 //ms
 
 struct Protocol;
 typedef int (*cmd_t)(KFile *fd, struct Protocol *proto);
@@ -76,7 +77,7 @@ typedef struct Devices
 {
 	uint8_t addr;
 	uint8_t status;
-	ticks_t ticks;
+	ticks_t timeout;
 } Devices;
 
 
@@ -85,7 +86,7 @@ extern const Cmd master_cmd[];
 extern const Cmd slave_cmd[];
 
 //void cmd_init();
-void cmd_poll(void);
+void cmd_poll(KFile *fd, struct Protocol *proto);
 
 #endif /* RADIO_CMD_H */
 
