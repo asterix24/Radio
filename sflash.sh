@@ -1,4 +1,4 @@
-PORT="/dev/tty.usbserial"
+PORT="/dev/tty.PL2303-0000101D"
 
 if [ $# -ge 1 ]; then
 	PORT=$1

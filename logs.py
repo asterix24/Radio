@@ -1,9 +1,9 @@
-#! /bin/python
+#! /bin/env python
 
 import serial
 import sys
 
-def_port = '/dev/tty.usbserial'
+def_port = '/dev/tty.PL2303-0000101D'
 def_baud = 115200
 
 try:

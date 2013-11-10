@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PORT="/dev/tty.usbserial-FTCVMTAV"
+PORT="/dev/tty.usbserial-FTG6Q56R"
 
 if [ $# -ge 1 ]; then
 	PORT=$1

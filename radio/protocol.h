@@ -1,9 +1,7 @@
 /**
  * \file
  * <!--
- * This file is part of BeRTOS.
- *
- * Bertos is free software; you can redistribute it and/or modify
+ * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
@@ -17,25 +15,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
- * As a special exception, you may use this file as part of a free software
- * library without restriction.  Specifically, if other files instantiate
- * templates or use macros or inline functions from this file, or you compile
- * this file and link it with other files to produce an executable, this
- * file does not by itself cause the resulting executable to be covered by
- * the GNU General Public License.  This exception does not however
- * invalidate any other reasons why the executable file might be covered by
- * the GNU General Public License.
+ * Copyright 2013 Daniele Basile <asterix@develer.com>
  *
- * Copyright 2013 Develer S.r.l. (http://www.develer.com/)
- * All Rights Reserved.
  * -->
  *
  * \brief Radio protocol interface.
  *
- * Simple protocol to manage master and radio slave. The low level of protocol is
- * managed from the radio ic, that compute crc, and manage start and stop of package.
+ * \author Daniele Basile <asterix24@gmail.com>
  *
- * \author Daniele Basile <asterix@develer.com>
  */
 
 #ifndef RADIO_PROTOCOL_H
@@ -83,15 +70,17 @@ typedef struct Protocol
 	uint8_t data[PROTO_DATALEN];
 } Protocol;
 
-int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, const uint8_t *data, size_t len);
+int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type);
+int protocol_sendByte(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, uint8_t data);
+int protocol_sendBuf(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, const uint8_t *data, size_t len);
 void protocol_decode(Radio *fd, Protocol *proto);
-void protocol_encode(Protocol *proto, uint8_t *buf, size_t len);
+void protocol_encode(Protocol *proto);
 int protocol_poll(KFile *fd, Protocol *proto);
 void protocol_init(const Cmd *table);
 
 INLINE int protocol_broadcast(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len)
 {
-	return protocol_send(fd, proto, CMD_BROADCAST, addr, data, len);
+	return protocol_sendBuf(fd, proto, addr, CMD_BROADCAST, data, len);
 }
 
 #endif /* RADIO_PROTOCOL_H */

@@ -1,9 +1,7 @@
 /**
  * \file
  * <!--
- * This file is part of BeRTOS.
- *
- * Bertos is free software; you can redistribute it and/or modify
+ * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
@@ -17,22 +15,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
- * As a special exception, you may use this file as part of a free software
- * library without restriction.  Specifically, if other files instantiate
- * templates or use macros or inline functions from this file, or you compile
- * this file and link it with other files to produce an executable, this
- * file does not by itself cause the resulting executable to be covered by
- * the GNU General Public License.  This exception does not however
- * invalidate any other reasons why the executable file might be covered by
- * the GNU General Public License.
+ * Copyright 2013 Daniele Basile <asterix@develer.com>
  *
- * Copyright 2013 Develer S.r.l. (http://www.develer.com/)
- * All Rights Reserved.
  * -->
  *
  * \brief Radio commands.
  *
- * \author Daniele Basile <asterix@develer.com>
+ * \author Daniele Basile <asterix24@gmail.com>
+ *
  */
 
 #include "protocol.h"
@@ -45,10 +35,11 @@
 #include <string.h>
 
 static Devices local_dev[CMD_DEVICES];
-const RadioCfg *radio_cfg;
+static uint8_t slave_status;
 
 static int cmd_master_broadcast(KFile *fd, Protocol *proto)
 {
+	kprintf("Broadcast: ");
 	uint8_t reply = PROTO_ACK;
 	for (int i = 0; i < CMD_DEVICES; i++)
 	{
@@ -70,13 +61,15 @@ static int cmd_master_broadcast(KFile *fd, Protocol *proto)
 	}
 
 	//proto->data[proto->len] = '\0';
-	//kprintf("type[%d], addr[%d], data[%s]\n", proto->type, proto->addr, proto->data);
+	kprintf("type[%d], addr[%d], data[%s]->", proto->type, proto->addr, proto->data);
+	kprintf("reply[%d]\n", reply);
 
-	return protocol_send(fd, proto, proto->type, proto->addr, &reply, sizeof(reply));
+	return protocol_sendByte(fd, proto, proto->addr, proto->type, reply);
 }
 
 static int cmd_master_data(KFile *_fd, Protocol *proto)
 {
+	kprintf("Data\n");
 	Radio *fd = RADIO_CAST(_fd);
 	protocol_decode(fd, proto);
 	return 0;
@@ -96,61 +89,23 @@ const Cmd master_cmd[] = {
 
 static int cmd_slave_data(KFile *_fd, Protocol *proto)
 {
-		kprintf("ACK, Send data..\n");
-		size_t index = 0;
-
-		for (size_t i = 0; i < cfg->fmt_len; i++)
-		{
-			if (cfg->fmt[i] == 'h')
-			{
-				int16_t d;
-				ASSERT(cfg->callbacks[i]);
-				cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
-				memcpy(&tmp[index], (uint8_t *)&d, sizeof(d));
-				index += sizeof(d);
-				kprintf("%d;", d);
-			}
-			if (cfg->fmt[i] == 'H')
-			{
-				uint16_t d;
-				ASSERT(cfg->callbacks[i]);
-				cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
-				memcpy(&tmp[index], (uint8_t *)&d, sizeof(d));
-				index += sizeof(d);
-				kprintf("%d;", d);
-			}
-		}
-		kputs("\n");
-
-		ASSERT(index <= 60);
-		protocol_data(&radio.fd, &proto, id, tmp, index);
+	(void)fd;
+	kprintf("Master broadcast->reply[%s]\n", proto->data[0] == PROTO_ACK ? "ACK" : "NACK");
+	slave_status = CMD_SLAVE_STATUS_WAIT;
+	return 0;
 }
 
 static int cmd_slave_broadcast(KFile *_fd, Protocol *proto)
 {
-	int ret = protocol_checkReply(&radio.fd, &proto);
-	if (ret == PROTO_ACK)
-	{
-		// Rimango in attesa del prossimo comando
-		// dal master, non vado in stop mode
-		// disattivare il watchdog.
-		// o attivare il timer per farlo resettare.
-		return 0;
-	}
+	slave_status = CMD_SLAVE_STATUS_SHUTDOWN;
 
-	/*
-	 * Riprovo a inviare il messaggio di broadcast
-	 * tra un po' di tempo perchè il master è occupato
-	 * o non ha capito.
-	 */
-	if (ret == PROTO_NACK)
-	{
-		sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
-		kprintf("Sent[%d]\n", sent);
-	}
+	kprintf("type[%d], addr[%d], data[%s]\n", proto->type, proto->addr, proto->data);
+	kprintf("Send data:");
+	memset(proto, 0, sizeof(Protocol));
+	protocol_encode(proto);
+	kprintf("type[%d], addr[%d]\n", proto->type, proto->addr);
 
-	kprintf("err[%d]\n", ret);
-	return ret;
+	return protocol_send(fd, proto, radio_cfg_id(), CMD_DATA);
 }
 
 const Cmd slave_cmd[] = {
@@ -159,84 +114,30 @@ const Cmd slave_cmd[] = {
 	{ 0     , NULL }
 };
 
+void cmd_slavePoll(KFile *fd, Protocol *proto)
+{
+	if (slave_status == CMD_SLAVE_STATUS_WAIT)
+	{
+		kprintf("Aspetto..\n");
+		return;
+	}
+
+	if (slave_status == CMD_SLAVE_STATUS_BROADCAST)
+	{
+		uint8_t id = radio_cfg_id();
+		int sent = protocol_broadcast(fd, proto, id, (const uint8_t *)"broadcast", sizeof("broadcast"));
+		kprintf("Broadcast sent[%d] %s[%d]\n", proto->type, sent < 0 ? "Error!":"Ok", sent);
+	}
+
+	if (slave_status == CMD_SLAVE_STATUS_SHUTDOWN)
+	{
+		kprintf("Spengo..\n");
+	}
+}
+
 void cmd_poll(KFile *fd, Protocol *proto)
 {
-	kfile_read(fd, proto, sizeof(Protocol));
-
-	/*
-	 * Check errors on received packet.
-	 */
-	int ret = kfile_error(fd);
-	if (ret < 0)
-	{
-		kfile_clearerr(fd);
-		if (ret == RADIO_RX_TIMEOUT)
-			return PROTO_TIMEOUT;
-
-		return PROTO_ERR;
-	}
-
-	/*
-	 * Ok, lets go to see if packet is for us, and
-	 * save the status in devices list.
-	 */
-	ASSERT(proto);
-	/* se sono slave devo vedere se il pacchetto è per me */
-	if (slave)
-		slave_id == proto->addr;
-		continue
-
-	/* se il pacchetto è per me cerco nella lista se ho ricevuto
-	 * il messaggio in precedenza */
-	for (int i = 0; i < CMD_DEVICES; i++)
-	{
-		if (local_dev[i].type == proto->type)
-		{
-			break;
-		}
-		/*
-		 * cerco nella lista, se non c'è l'aggiungo con stato new,
-		 * altrimenti verifico lo stato.
-		 *
-		 * Ogni comando che invio deve aggiornare lo stato dei devices
-		 * in modo da capire se quando mi arriva il messaggio, questo è
-		 * una risposta o un nuovo messaggio da processare.
-		 * la stessa cosa la deve fare il master.
-		 *
-		 */
-
-
-
-		if (local_dev[i].addr == proto->addr)
-		{
-			reply = PROTO_ACK;
-			break;
-		}
-		else if (!local_dev[i].addr)
-		{
-			local_dev[i].addr =  proto->addr;
-			local_dev[i].len =  proto->len;
-			memcpy(local_dev[i].data, proto->data, proto->len);
-			reply = PROTO_ACK;
-			break;
-		}
-		else
-			reply = PROTO_NACK;
-	}
-
-	// verificare
-	if (proto->type == CMD_TYPE_REPLY)
-		return PROTO_OK;
-	else
-		return PROTO_WRONG_ADDR;
-
-	return PROTO_ERR;
-
-	cmd_t callback = protocol_search(proto);
-
-	if (callback)
-		callback(fd, proto);
-
+	memset(proto, 0, sizeof(Protocol));
 	for (int i = 0; i < CMD_DEVICES; i++)
 	{
 		kprintf("%d: ", i);
@@ -244,14 +145,20 @@ void cmd_poll(KFile *fd, Protocol *proto)
 		{
 			if (ticks_to_ms(timer_clock() - local_dev[i].timeout) > CMD_TIMEOUT)
 			{
+				kprintf("Addr[%d] timeout remove it..\n", local_dev[i].addr);
 				memset(&local_dev[i], 0, sizeof(Devices));
 				continue;
 			}
 
-			kprintf("Addr[%d],status[%d],ticks[%ld]\n", local_dev[i].addr, local_dev[i].status, local_dev[i].timeout);
+			kprintf("Addr[%d],status[%d],ticks[%ld]\n", local_dev[i].addr,
+						local_dev[i].status, local_dev[i].timeout);
+
 			if (local_dev[i].status == CMD_NEW_DEV)
 			{
-				int ret = protocol_send(fd, proto, CMD_DATA, local_dev[i].addr, (const uint8_t *)"data_query", sizeof("data_query"));
+				kprintf("Get data..from[%d]\n", local_dev[i].addr);
+				int ret = protocol_sendBuf(fd, proto, local_dev[i].addr, CMD_DATA,
+						(const uint8_t *)"data_query", sizeof("data_query"));
+
 				if (ret < 0)
 					continue;
 

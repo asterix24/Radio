@@ -1,9 +1,7 @@
 /**
  * \file
  * <!--
- * This file is part of BeRTOS.
- *
- * Bertos is free software; you can redistribute it and/or modify
+ * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
@@ -17,22 +15,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
- * As a special exception, you may use this file as part of a free software
- * library without restriction.  Specifically, if other files instantiate
- * templates or use macros or inline functions from this file, or you compile
- * this file and link it with other files to produce an executable, this
- * file does not by itself cause the resulting executable to be covered by
- * the GNU General Public License.  This exception does not however
- * invalidate any other reasons why the executable file might be covered by
- * the GNU General Public License.
+ * Copyright 2013 Daniele Basile <asterix@develer.com>
  *
- * Copyright 2013 Develer S.r.l. (http://www.develer.com/)
- * All Rights Reserved.
  * -->
  *
  * \brief Radio protocol implementation.
  *
- * \author Daniele Basile <asterix@develer.com>
+ * \author Daniele Basile <asterix24@gmail.com>
+ *
  */
 
 #include "protocol.h"
@@ -67,22 +57,37 @@ INLINE int check_err(KFile *fd)
 	return ret;
 }
 
-int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, const uint8_t *data, size_t len)
+int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type)
 {
-	ASSERT(len < PROTO_DATALEN);
 
 	proto->type = type;
 	proto->addr = addr;
+
+	kfile_write(fd, proto, sizeof(Protocol));
+	kprintf("Send[%d] to [%d]\n", proto->type, proto->addr);
+	return check_err(fd);
+}
+
+int protocol_sendByte(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, uint8_t data)
+{
+	proto->len = sizeof(data);
+	memcpy(proto->data, &data, sizeof(data));
+
+	return protocol_send(fd, proto, addr, type);
+}
+
+int protocol_sendBuf(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, const uint8_t *data, size_t len)
+{
+	ASSERT(len < PROTO_DATALEN);
 	proto->len = len;
 	memcpy(proto->data, data, len);
 
-	kfile_write(fd, proto, sizeof(Protocol));
-
-	return check_err(fd);
+	return protocol_send(fd, proto, addr, type);
 }
 
 int protocol_poll(KFile *fd, Protocol *proto)
 {
+	memset(proto, 0, sizeof(Protocol));
 	kfile_read(fd, proto, sizeof(Protocol));
 	int ret = check_err(fd);
 	if (ret < 0)
@@ -95,6 +100,7 @@ int protocol_poll(KFile *fd, Protocol *proto)
 	if (addr != RADIO_MASTER && proto->addr != addr)
 		return PROTO_WRONG_ADDR;
 
+	kprintf("poll recv[%d]\n", proto->type);
 	cmd_t callback = protocol_search(proto);
 	if (callback)
 		return callback(fd, proto);
@@ -113,10 +119,15 @@ void protocol_decode(Radio *fd, Protocol *proto)
 	size_t index = 0;
 	for (size_t j = 0; j < cfg->fmt_len; j++)
 	{
+		if (index > proto->len)
+		{
+			kprintf("Buffer overun..");
+			break;
+		}
+
 		/* 'h': 2 byte signed */
 		if (cfg->fmt[j] == 'h')
 		{
-			ASSERT(index <= proto->len);
 			int16_t d;
 			memcpy(&d, &proto->data[index], sizeof(int16_t));
 			kprintf("%d;", d);
@@ -136,11 +147,12 @@ void protocol_decode(Radio *fd, Protocol *proto)
 }
 
 
-void protocol_encode(Protocol *proto, uint8_t *buf, size_t len)
+void protocol_encode(Protocol *proto)
 {
-	kprintf("encode data:len[%d]\n", proto->len);
+	kprintf("Encode data\n");
 	uint8_t id = radio_cfg_id();
 	const RadioCfg *cfg = radio_cfg(id);
+
 	kputs("$");
 	size_t index = 0;
 	for (size_t i = 0; i < cfg->fmt_len; i++)
@@ -149,10 +161,10 @@ void protocol_encode(Protocol *proto, uint8_t *buf, size_t len)
 		{
 			int16_t d;
 			ASSERT(cfg->callbacks[i]);
-			ASSERT(index < len);
+			ASSERT(index < PROTO_DATALEN);
 
 			cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
-			memcpy(&buf[index], (uint8_t *)&d, sizeof(d));
+			memcpy(&proto->data[index], (uint8_t *)&d, sizeof(d));
 			index += sizeof(d);
 			kprintf("%d;", d);
 		}
@@ -160,10 +172,10 @@ void protocol_encode(Protocol *proto, uint8_t *buf, size_t len)
 		{
 			uint16_t d;
 			ASSERT(cfg->callbacks[i]);
-			ASSERT(index < len);
+			ASSERT(index < PROTO_DATALEN);
 
 			cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
-			memcpy(&buf[index], (uint8_t *)&d, sizeof(d));
+			memcpy(&proto->data[index], (uint8_t *)&d, sizeof(d));
 			index += sizeof(d);
 			kprintf("%d;", d);
 		}

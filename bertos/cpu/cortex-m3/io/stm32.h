@@ -50,6 +50,8 @@
 #include "stm32_adc.h"
 #include "stm32_i2c.h"
 #include "stm32_flash.h"
+#include "stm32_pwr.h"
+#include "stm32_iwdt.h"
 #include "stm32_spi.h"
 
 #if CPU_CM3_STM32F101C4

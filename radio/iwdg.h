@@ -19,41 +19,17 @@
  *
  * -->
  *
- * \brief Measure.
+ * \brief Radio watchdog.
  *
  * \author Daniele Basile <asterix24@gmail.com>
  *
  */
 
-#include "measure.h"
+#ifndef RADIO_IWDT_H
+#define RADIO_IWDT_H
 
-#include "hw/hw_adc.h"
+void go_standby(void);
+void iwdt_reset(void);
+void iwdt_start(void);
 
-#include <cfg/macros.h>
-
-#include <io/stm32.h>
-
-#include <cpu/types.h>
-
-#include <drv/gpio_stm32.h>
-#include <drv/clock_stm32.h>
-
-#include <string.h>
-
-int measure_intTemp(uint8_t *data, size_t len)
-{
-	ASSERT(len >= sizeof(uint16_t));
-	uint16_t t = hw_readIntTemp();
-	memcpy(data, &t, sizeof(uint16_t));
-
-	return 0;
-}
-
-int measure_intVref(uint8_t *data, size_t len)
-{
-	ASSERT(len >= sizeof(uint16_t));
-	uint16_t v = hw_readVrefint();
-	memcpy(data, &v, sizeof(uint16_t));
-
-	return 0;
-}
+#endif /* IWDT */
