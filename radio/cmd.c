@@ -36,6 +36,7 @@
  */
 
 #include "protocol.h"
+#include "radio_cfg.h"
 
 #include <cfg/debug.h>
 
@@ -44,6 +45,7 @@
 #include <string.h>
 
 static Devices local_dev[CMD_DEVICES];
+static uint8_t slave_status;
 
 static int cmd_master_broadcast(KFile *fd, Protocol *proto)
 {
@@ -72,7 +74,7 @@ static int cmd_master_broadcast(KFile *fd, Protocol *proto)
 	kprintf("type[%d], addr[%d], data[%s]->", proto->type, proto->addr, proto->data);
 	kprintf("reply[%d]\n", reply);
 
-	return protocol_send(fd, proto, proto->addr, proto->type, &reply, sizeof(reply));
+	return protocol_sendByte(fd, proto, proto->addr, proto->type, reply);
 }
 
 static int cmd_master_data(KFile *_fd, Protocol *proto)
@@ -93,14 +95,21 @@ static int cmd_slave_broadcast(KFile *fd, Protocol *proto)
 {
 	(void)fd;
 	kprintf("Master broadcast->reply[%s]\n", proto->data[0] == PROTO_ACK ? "ACK" : "NACK");
+	slave_status = CMD_SLAVE_STATUS_WAIT;
 	return 0;
 }
 
 static int cmd_slave_data(KFile *fd, Protocol *proto)
 {
-	(void)fd;
-	(void)proto;
-	return 0;
+	slave_status = CMD_SLAVE_STATUS_SHUTDOWN;
+
+	kprintf("type[%d], addr[%d], data[%s]\n", proto->type, proto->addr, proto->data);
+	kprintf("Send data:");
+	memset(proto, 0, sizeof(Protocol));
+	protocol_encode(proto);
+	kprintf("type[%d], addr[%d]\n", proto->type, proto->addr);
+
+	return protocol_send(fd, proto, radio_cfg_id(), CMD_DATA);
 }
 
 const Cmd slave_cmd[] = {
@@ -108,6 +117,27 @@ const Cmd slave_cmd[] = {
 	{ CMD_DATA,      cmd_slave_data      },
 	{ 0     , NULL }
 };
+
+void cmd_slavePoll(KFile *fd, Protocol *proto)
+{
+	if (slave_status == CMD_SLAVE_STATUS_WAIT)
+	{
+		kprintf("Aspetto..\n");
+		return;
+	}
+
+	if (slave_status == CMD_SLAVE_STATUS_BROADCAST)
+	{
+		uint8_t id = radio_cfg_id();
+		int sent = protocol_broadcast(fd, proto, id, (const uint8_t *)"broadcast", sizeof("broadcast"));
+		kprintf("Broadcast sent[%d] %s[%d]\n", proto->type, sent < 0 ? "Error!":"Ok", sent);
+	}
+
+	if (slave_status == CMD_SLAVE_STATUS_SHUTDOWN)
+	{
+		kprintf("Spengo..\n");
+	}
+}
 
 void cmd_poll(KFile *fd, Protocol *proto)
 {
@@ -130,7 +160,7 @@ void cmd_poll(KFile *fd, Protocol *proto)
 			if (local_dev[i].status == CMD_NEW_DEV)
 			{
 				kprintf("Get data..from[%d]\n", local_dev[i].addr);
-				int ret = protocol_send(fd, proto, local_dev[i].addr, CMD_DATA,
+				int ret = protocol_sendBuf(fd, proto, local_dev[i].addr, CMD_DATA,
 						(const uint8_t *)"data_query", sizeof("data_query"));
 
 				if (ret < 0)

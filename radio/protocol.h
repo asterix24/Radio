@@ -83,15 +83,17 @@ typedef struct Protocol
 	uint8_t data[PROTO_DATALEN];
 } Protocol;
 
-int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, const uint8_t *data, size_t len);
+int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type);
+int protocol_sendByte(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, uint8_t data);
+int protocol_sendBuf(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, const uint8_t *data, size_t len);
 void protocol_decode(Radio *fd, Protocol *proto);
-void protocol_encode(Protocol *proto, uint8_t *buf, size_t len);
+void protocol_encode(Protocol *proto);
 int protocol_poll(KFile *fd, Protocol *proto);
 void protocol_init(const Cmd *table);
 
 INLINE int protocol_broadcast(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len)
 {
-	return protocol_send(fd, proto, addr, CMD_BROADCAST, data, len);
+	return protocol_sendBuf(fd, proto, addr, CMD_BROADCAST, data, len);
 }
 
 #endif /* RADIO_PROTOCOL_H */

@@ -53,10 +53,15 @@
 #define CMD_DATA             0x3
 
 /*
- * Device status
+ * Device and slave status
  */
 #define CMD_NEW_DEV                  1
 #define CMD_WAIT_DEV                 2
+
+#define CMD_SLAVE_STATUS_BROADCAST   0
+#define CMD_SLAVE_STATUS_WAIT        1
+#define CMD_SLAVE_STATUS_DATA        2
+#define CMD_SLAVE_STATUS_SHUTDOWN    3
 
 /*
  * Settings
@@ -87,6 +92,7 @@ extern const Cmd slave_cmd[];
 
 //void cmd_init();
 void cmd_poll(KFile *fd, struct Protocol *proto);
+void cmd_slavePoll(KFile *fd, struct Protocol *proto);
 
 #endif /* RADIO_CMD_H */
 
