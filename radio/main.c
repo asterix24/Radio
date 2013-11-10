@@ -88,12 +88,11 @@ int main(void)
 	if (id == RADIO_MASTER)
 	{
 		protocol_init(master_cmd);
+		radio_timeout(&radio, 1000);
 		while (1)
 		{
 			//kputs("Ready:\n");
-			memset(&proto, 0, sizeof(Protocol));
 			protocol_poll(&radio.fd, &proto);
-			memset(&proto, 0, sizeof(Protocol));
 			cmd_poll(&radio.fd, &proto);
 		}
 	}
@@ -105,10 +104,11 @@ int main(void)
 
 			const RadioCfg *cfg = radio_cfg(id);
 
-			int sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
-			kprintf("Sent[%d]\n", sent);
+			int sent = protocol_broadcast(&radio.fd, &proto, id, "broadcast", sizeof("broadcast"));
+			kprintf("Broadcast sent[%d] %s[%d]\n", proto.type, sent < 0 ? "Error!":"Ok", sent);
 
 			radio_timeout(&radio, 1000);
+			protocol_poll(&radio.fd, &proto);
 
 			/*
 			memset(&proto, 0, sizeof(Protocol));
