@@ -101,38 +101,9 @@ int main(void)
 		protocol_init(slave_cmd);
 		while (1)
 		{
-
-			const RadioCfg *cfg = radio_cfg(id);
-
-			int sent = protocol_broadcast(&radio.fd, &proto, id, "broadcast", sizeof("broadcast"));
-			kprintf("Broadcast sent[%d] %s[%d]\n", proto.type, sent < 0 ? "Error!":"Ok", sent);
-
-			radio_timeout(&radio, 1000);
+			radio_timeout(&radio, 5000);
 			protocol_poll(&radio.fd, &proto);
-
-			/*
-			memset(&proto, 0, sizeof(Protocol));
-			int ret = protocol_checkReply(&radio.fd, &proto);
-			if (ret == PROTO_ACK)
-			{
-				kprintf("ACK, Send data..\n");
-
-				protocol_encode(&proto, tmp, sizeof(tmp));
-				protocol_data(&radio.fd, &proto, id, tmp, index);
-			}
-			else if (ret == PROTO_NACK)
-			{
-				timer_delay(500);
-				sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
-				kprintf("Sent[%d]\n", sent);
-			}
-			else
-			{
-				kprintf("err[%d]\n", ret);
-			}
-			*/
-
-			timer_delay(5000);
+			cmd_slavePoll(&radio.fd, &proto);
 		}
 	}
 
