@@ -5,7 +5,7 @@ import sys
 
 try:
     s = serial.Serial(
-        port='/dev/tty.usbserial-FTCVMTAV',
+        port='/dev/tty.usbserial-FTG6Q56R',
         baudrate=115200,     # baudrate
         bytesize=8,             # number of databits
         parity=serial.PARITY_NONE,
