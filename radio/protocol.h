@@ -83,26 +83,15 @@ typedef struct Protocol
 	uint8_t data[PROTO_DATALEN];
 } Protocol;
 
-
-
-int protocol_data(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len);
-int protocol_broadcast(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len);
-int protocol_reply(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len);
-int protocol_waitReply(KFile *fd, Protocol *proto);
-void protocol_poll(KFile *fd, Protocol *proto);
+int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, const uint8_t *data, size_t len);
+void protocol_decode(Radio *fd, Protocol *proto);
+void protocol_encode(Protocol *proto, uint8_t *buf, size_t len);
+int protocol_poll(KFile *fd, Protocol *proto);
 void protocol_init(const Cmd *table);
 
-/*
- * Utility function to check ACK or NACK, generally check
- * the result of CMD_TYPE_REPLY.
- */
-INLINE int protocol_checkReply(KFile *fd, Protocol *proto)
+INLINE int protocol_broadcast(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len)
 {
-	int ret = protocol_waitReply(fd, proto);
-	if (ret < 0)
-		return ret;
-
-	return (proto->data[0]);
+	return protocol_send(fd, proto, CMD_BROADCAST, addr, data, len);
 }
 
 #endif /* RADIO_PROTOCOL_H */

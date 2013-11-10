@@ -45,86 +45,43 @@
 static Devices local_dev[CMD_DEVICES];
 const RadioCfg *radio_cfg;
 
-/*
- * MASTER COMMAND FUNCTIONS
- */
-
 static int cmd_master_broadcast(KFile *fd, Protocol *proto)
 {
-	uint8_t reply = 0;
-	for (int i = 0; i < 5; i++)
+	uint8_t reply = PROTO_ACK;
+	for (int i = 0; i < CMD_DEVICES; i++)
 	{
 		if (local_dev[i].addr == proto->addr)
 		{
-			reply = PROTO_ACK;
 			break;
 		}
 		else if (!local_dev[i].addr)
 		{
 			local_dev[i].addr =  proto->addr;
-			local_dev[i].len =  proto->len;
-			memcpy(local_dev[i].data, proto->data, proto->len);
-			reply = PROTO_ACK;
+			local_dev[i].status = CMD_NEW_DEV;
+			local_dev[i].ticks = CMD_TICKS;
 			break;
 		}
 		else
+		{
 			reply = PROTO_NACK;
+		}
 	}
 
 	//proto->data[proto->len] = '\0';
 	//kprintf("type[%d], addr[%d], data[%s]\n", proto->type, proto->addr, proto->data);
 
-	if (protocol_reply(fd, proto, proto->addr, &reply, sizeof(reply)))
-		return 0;
-
-	return -1;
+	return protocol_send(fd, proto, proto->type, proto->addr, &reply, sizeof(reply));
 }
 
 static int cmd_master_data(KFile *_fd, Protocol *proto)
 {
-	//kprintf("type[%d], addr[%d]\n", proto->type, proto->addr);
-
-	//kprintf("Decode data:len[%d]\n", proto->len);
 	Radio *fd = RADIO_CAST(_fd);
-	kprintf("%d;%d;%d;", proto->addr, fd->lqi, fd->rssi);
-	int i = 0;
-	for (i = 0; i < CMD_DEVICES; i++)
-	{
-		if (local_dev[i].addr == proto->addr)
-		{
-			size_t index = 0;
-			//kprintf("l[%d],d[%s]\n", local_dev[i].len, local_dev[i].data);
-			for (size_t j = 0; j < local_dev[i].len; j++)
-			{
-				if (local_dev[i].data[j] == 'h')
-				{
-					ASSERT(index <= proto->len);
-					int16_t d;
-					memcpy(&d, &proto->data[index], sizeof(int16_t));
-					kprintf("%d;", d);
-					index += sizeof(int16_t);
-				}
-				if (local_dev[i].data[j] == 'H')
-				{
-					ASSERT(index <= proto->len);
-					uint16_t d;
-					memcpy(&d, &proto->data[index], sizeof(uint16_t));
-					kprintf("%d;", d);
-					index += sizeof(uint16_t);
-				}
-			}
-
-			break;
-		}
-	}
-	/* Remove from list served devices */
-	memset(&local_dev[i], 0, sizeof(Devices));
-	kputs("\n");
-
+	protocol_decode(fd, proto);
 	return 0;
 }
 
 const Cmd master_cmd[] = {
+<<<<<<< HEAD
 	{ CMD_TYPE_BROADCAST, cmd_master_broadcast     },
 	{ CMD_TYPE_DATA, cmd_master_data      },
 	{ 0   , NULL }
@@ -198,6 +155,26 @@ static int cmd_slave_broadcast(KFile *_fd, Protocol *proto)
 const Cmd slave_cmd[] = {
 	{ CMD_TYPE_BROADCAST,     cmd_slave_broadcast    }, /* Check reply from master    */
 	{ CMD_TYPE_DATA, cmd_slave_data }, /* Send all measure to master */
+=======
+	{ CMD_BROADCAST, cmd_master_broadcast },
+	{ CMD_DATA,      cmd_master_data      },
+	{ 0   , NULL }
+};
+
+static int cmd_slave_broadcast(KFile *fd, Protocol *proto)
+{
+	return 0;
+}
+
+static int cmd_slave_data(KFile *fd, Protocol *proto)
+{
+	return 0;
+}
+
+const Cmd slave_cmd[] = {
+	{ CMD_BROADCAST, cmd_slave_broadcast },
+	{ CMD_DATA,      cmd_slave_data      },
+>>>>>>> 53ed8e40f22b36969582bedc2aa102030a21ab56
 	{ 0     , NULL }
 };
 
@@ -283,7 +260,7 @@ void cmd_loop(KFile *fd, Protocol *proto)
 	{
 		kprintf("%d: ", i);
 		if (local_dev[i].addr)
-			kprintf("Addr[%d],data[%s],len[%d]\n", local_dev[i].addr, local_dev[i].data, local_dev[i].len);
+			kprintf("Addr[%d],status[%d],ticks[%ld]\n", local_dev[i].addr, local_dev[i].status, local_dev[i].ticks);
 		else
 			kprintf("Empty\n");
 	}

@@ -96,7 +96,7 @@ int main(void)
 	if (id == RADIO_MASTER)
 	{
 		protocol_init(master_cmd);
-		while(1)
+		while (1)
 		{
 			//kputs("Ready:\n");
 			memset(&proto, 0, sizeof(Protocol));
@@ -121,6 +121,29 @@ int main(void)
 			protocol_poll(&radio.fd, &proto);
 
 
+			/*
+			memset(&proto, 0, sizeof(Protocol));
+			int ret = protocol_checkReply(&radio.fd, &proto);
+			if (ret == PROTO_ACK)
+			{
+				kprintf("ACK, Send data..\n");
+
+				protocol_encode(&proto, tmp, sizeof(tmp));
+				protocol_data(&radio.fd, &proto, id, tmp, index);
+			}
+			else if (ret == PROTO_NACK)
+			{
+				timer_delay(500);
+				sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
+				kprintf("Sent[%d]\n", sent);
+			}
+			else
+			{
+				kprintf("err[%d]\n", ret);
+			}
+			*/
+
+			timer_delay(5000);
 		}
 	}
 

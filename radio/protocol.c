@@ -37,6 +37,7 @@
 
 #include "protocol.h"
 #include "cmd.h"
+#include "radio_cfg.h"
 
 #include <cfg/debug.h>
 
@@ -52,36 +53,8 @@ static cmd_t protocol_search(Protocol *proto)
 
 	return NULL;
 }
-
-static bool protocol_send(KFile *fd, Protocol *proto, uint8_t type, uint8_t addr, const uint8_t *data, size_t len)
+INLINE int check_err(KFile *fd)
 {
-	ASSERT(len < PROTO_DATALEN);
-
-	proto->type = type;
-	proto->addr = addr;
-	proto->len = len;
-	memcpy(proto->data, data, len);
-
-	if (kfile_write(fd, proto, sizeof(Protocol)) > 0)
-		return true;
-
-	return false;
-}
-
-int protocol_broadcast(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len)
-{
-	return protocol_send(fd, proto, CMD_TYPE_BROADCAST, addr, data, len);
-}
-
-int protocol_data(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len)
-{
-	return protocol_send(fd, proto, CMD_TYPE_DATA, addr, data, len);
-}
-
-int protocol_waitReply(KFile *fd, Protocol *proto)
-{
-	kfile_read(fd, proto, sizeof(Protocol));
-
 	int ret = kfile_error(fd);
 	if (ret < 0)
 	{
@@ -91,23 +64,111 @@ int protocol_waitReply(KFile *fd, Protocol *proto)
 
 		return PROTO_ERR;
 	}
+	return ret;
+}
+
+int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, const uint8_t *data, size_t len)
+{
+	ASSERT(len < PROTO_DATALEN);
+
+	proto->type = type;
+	proto->addr = addr;
+	proto->len = len;
+	memcpy(proto->data, data, len);
+
+	kfile_write(fd, proto, sizeof(Protocol));
+
+	return check_err(fd);
+}
+
+int protocol_poll(KFile *fd, Protocol *proto)
+{
+	kfile_read(fd, proto, sizeof(Protocol));
+	int ret = check_err(fd);
+	if (ret < 0)
+		return ret;
 
 	ASSERT(proto);
-	if (proto->type == CMD_TYPE_REPLY)
-		return PROTO_OK;
-	else
+
+	uint8_t addr = radio_cfg_id();
+	// If we are slave discard all message not for us.
+	if (addr != RADIO_MASTER && proto->addr != addr)
 		return PROTO_WRONG_ADDR;
+
+	cmd_t callback = protocol_search(proto);
+	if (callback)
+		return callback(fd, proto);
 
 	return PROTO_ERR;
 }
 
-void protocol_poll(KFile *fd, Protocol *proto)
-{
-	kfile_read(fd, proto, sizeof(Protocol));
-	cmd_t callback = protocol_search(proto);
 
-	if (callback)
-		callback(fd, proto);
+void protocol_decode(Radio *fd, Protocol *proto)
+{
+	kprintf("Decode data:len[%d]\n", proto->len);
+	uint8_t id = radio_cfg_id();
+	const RadioCfg *cfg = radio_cfg(id);
+	kprintf("$%d;%d;%d;", proto->addr, fd->lqi, fd->rssi);
+
+	size_t index = 0;
+	for (size_t j = 0; j < cfg->fmt_len; j++)
+	{
+		/* 'h': 2 byte signed */
+		if (cfg->fmt[j] == 'h')
+		{
+			ASSERT(index <= proto->len);
+			int16_t d;
+			memcpy(&d, &proto->data[index], sizeof(int16_t));
+			kprintf("%d;", d);
+			index += sizeof(int16_t);
+		}
+		/* 'H': 2 byte unsigned */
+		if (cfg->fmt[j] == 'H')
+		{
+			ASSERT(index <= proto->len);
+			uint16_t d;
+			memcpy(&d, &proto->data[index], sizeof(uint16_t));
+			kprintf("%d;", d);
+			index += sizeof(uint16_t);
+		}
+	}
+	kputs("\n");
+}
+
+
+void protocol_encode(Protocol *proto, uint8_t *buf, size_t len)
+{
+	kprintf("encode data:len[%d]\n", proto->len);
+	uint8_t id = radio_cfg_id();
+	const RadioCfg *cfg = radio_cfg(id);
+	kputs("$");
+	size_t index = 0;
+	for (size_t i = 0; i < cfg->fmt_len; i++)
+	{
+		if (cfg->fmt[i] == 'h')
+		{
+			int16_t d;
+			ASSERT(cfg->callbacks[i]);
+			ASSERT(index < len);
+
+			cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
+			memcpy(&buf[index], (uint8_t *)&d, sizeof(d));
+			index += sizeof(d);
+			kprintf("%d;", d);
+		}
+		if (cfg->fmt[i] == 'H')
+		{
+			uint16_t d;
+			ASSERT(cfg->callbacks[i]);
+			ASSERT(index < len);
+
+			cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
+			memcpy(&buf[index], (uint8_t *)&d, sizeof(d));
+			index += sizeof(d);
+			kprintf("%d;", d);
+		}
+	}
+	kputs("\n");
 }
 
 void protocol_init(const Cmd *table)
