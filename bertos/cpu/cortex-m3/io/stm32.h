@@ -52,6 +52,7 @@
 #include "stm32_flash.h"
 #include "stm32_pwr.h"
 #include "stm32_iwdt.h"
+#include "stm32_spi.h"
 
 #if CPU_CM3_STM32F101C4
 	#define GPIO_USART1_TX_PIN	BV(9)
