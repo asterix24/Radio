@@ -47,6 +47,7 @@ static Devices local_dev[CMD_DEVICES];
 
 static int cmd_master_broadcast(KFile *fd, Protocol *proto)
 {
+	kprintf("Broadcast: ");
 	uint8_t reply = PROTO_ACK;
 	for (int i = 0; i < CMD_DEVICES; i++)
 	{
@@ -68,13 +69,15 @@ static int cmd_master_broadcast(KFile *fd, Protocol *proto)
 	}
 
 	//proto->data[proto->len] = '\0';
-	//kprintf("type[%d], addr[%d], data[%s]\n", proto->type, proto->addr, proto->data);
+	kprintf("type[%d], addr[%d], data[%s]->", proto->type, proto->addr, proto->data);
+	kprintf("reply[%d]\n", reply);
 
-	return protocol_send(fd, proto, proto->type, proto->addr, &reply, sizeof(reply));
+	return protocol_send(fd, proto, proto->addr, proto->type, &reply, sizeof(reply));
 }
 
 static int cmd_master_data(KFile *_fd, Protocol *proto)
 {
+	kprintf("Data\n");
 	Radio *fd = RADIO_CAST(_fd);
 	protocol_decode(fd, proto);
 	return 0;
@@ -88,12 +91,15 @@ const Cmd master_cmd[] = {
 
 static int cmd_slave_broadcast(KFile *fd, Protocol *proto)
 {
-	kprintf("Broadcast reply[%s]\n", proto->data[0] == PROTO_ACK ? "ACK" : "NACK");
+	(void)fd;
+	kprintf("Master broadcast->reply[%s]\n", proto->data[0] == PROTO_ACK ? "ACK" : "NACK");
 	return 0;
 }
 
 static int cmd_slave_data(KFile *fd, Protocol *proto)
 {
+	(void)fd;
+	(void)proto;
 	return 0;
 }
 
@@ -105,6 +111,7 @@ const Cmd slave_cmd[] = {
 
 void cmd_poll(KFile *fd, Protocol *proto)
 {
+	memset(proto, 0, sizeof(Protocol));
 	for (int i = 0; i < CMD_DEVICES; i++)
 	{
 		kprintf("%d: ", i);
@@ -112,14 +119,20 @@ void cmd_poll(KFile *fd, Protocol *proto)
 		{
 			if (ticks_to_ms(timer_clock() - local_dev[i].timeout) > CMD_TIMEOUT)
 			{
+				kprintf("Addr[%d] timeout remove it..\n", local_dev[i].addr);
 				memset(&local_dev[i], 0, sizeof(Devices));
 				continue;
 			}
 
-			kprintf("Addr[%d],status[%d],ticks[%ld]\n", local_dev[i].addr, local_dev[i].status, local_dev[i].timeout);
+			kprintf("Addr[%d],status[%d],ticks[%ld]\n", local_dev[i].addr,
+						local_dev[i].status, local_dev[i].timeout);
+
 			if (local_dev[i].status == CMD_NEW_DEV)
 			{
-				int ret = protocol_send(fd, proto, CMD_DATA, local_dev[i].addr, (const uint8_t *)"data_query", sizeof("data_query"));
+				kprintf("Get data..from[%d]\n", local_dev[i].addr);
+				int ret = protocol_send(fd, proto, local_dev[i].addr, CMD_DATA,
+						(const uint8_t *)"data_query", sizeof("data_query"));
+
 				if (ret < 0)
 					continue;
 

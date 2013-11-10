@@ -77,13 +77,14 @@ int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, const 
 	memcpy(proto->data, data, len);
 
 	kfile_write(fd, proto, sizeof(Protocol));
-
+	kprintf("Send[%d] to [%d]\n", proto->type, proto->addr);
 	return check_err(fd);
 }
 
 
 int protocol_poll(KFile *fd, Protocol *proto)
 {
+	memset(proto, 0, sizeof(Protocol));
 	kfile_read(fd, proto, sizeof(Protocol));
 	int ret = check_err(fd);
 	if (ret < 0)
@@ -96,6 +97,7 @@ int protocol_poll(KFile *fd, Protocol *proto)
 	if (addr != RADIO_MASTER && proto->addr != addr)
 		return PROTO_WRONG_ADDR;
 
+	kprintf("poll recv[%d]\n", proto->type);
 	cmd_t callback = protocol_search(proto);
 	if (callback)
 		return callback(fd, proto);

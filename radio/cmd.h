@@ -62,7 +62,7 @@
  * Settings
  */
 #define CMD_DEVICES                  5
-#define CMD_TIMEOUT               1000 //ms
+#define CMD_TIMEOUT               5000 //ms
 
 struct Protocol;
 typedef int (*cmd_t)(KFile *fd, struct Protocol *proto);

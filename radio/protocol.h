@@ -91,7 +91,7 @@ void protocol_init(const Cmd *table);
 
 INLINE int protocol_broadcast(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len)
 {
-	return protocol_send(fd, proto, CMD_BROADCAST, addr, data, len);
+	return protocol_send(fd, proto, addr, CMD_BROADCAST, data, len);
 }
 
 #endif /* RADIO_PROTOCOL_H */
