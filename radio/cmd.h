@@ -39,6 +39,7 @@
 #define RADIO_CMD_H
 
 #include "protocol.h"
+#include "radio_cfg.h"
 
 #include <io/kfile.h>
 
@@ -75,6 +76,8 @@ typedef struct Cmd
 
 typedef struct Devices
 {
+	uint8_t status;
+	uint8_t type;
 	uint8_t addr;
 	uint8_t status;
 	ticks_t timeout;

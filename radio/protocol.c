@@ -81,7 +81,6 @@ int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, const 
 	return check_err(fd);
 }
 
-
 int protocol_poll(KFile *fd, Protocol *proto)
 {
 	kfile_read(fd, proto, sizeof(Protocol));

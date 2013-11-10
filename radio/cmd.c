@@ -36,6 +36,7 @@
  */
 
 #include "protocol.h"
+#include "radio_cfg.h"
 
 #include <cfg/debug.h>
 
@@ -44,6 +45,7 @@
 #include <string.h>
 
 static Devices local_dev[CMD_DEVICES];
+const RadioCfg *radio_cfg;
 
 static int cmd_master_broadcast(KFile *fd, Protocol *proto)
 {
@@ -81,30 +83,160 @@ static int cmd_master_data(KFile *_fd, Protocol *proto)
 }
 
 const Cmd master_cmd[] = {
-	{ CMD_BROADCAST, cmd_master_broadcast },
-	{ CMD_DATA,      cmd_master_data      },
+	{ CMD_TYPE_BROADCAST, cmd_master_broadcast     },
+	{ CMD_TYPE_DATA, cmd_master_data      },
 	{ 0   , NULL }
 };
 
-static int cmd_slave_broadcast(KFile *fd, Protocol *proto)
+
+/*
+ * SLAVE COMMAND FUNCTIONS
+ */
+
+
+static int cmd_slave_data(KFile *_fd, Protocol *proto)
 {
-	kprintf("Broadcast reply[%s]\n", proto->data[0] == PROTO_ACK ? "ACK" : "NACK");
-	return 0;
+		kprintf("ACK, Send data..\n");
+		size_t index = 0;
+
+		for (size_t i = 0; i < cfg->fmt_len; i++)
+		{
+			if (cfg->fmt[i] == 'h')
+			{
+				int16_t d;
+				ASSERT(cfg->callbacks[i]);
+				cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
+				memcpy(&tmp[index], (uint8_t *)&d, sizeof(d));
+				index += sizeof(d);
+				kprintf("%d;", d);
+			}
+			if (cfg->fmt[i] == 'H')
+			{
+				uint16_t d;
+				ASSERT(cfg->callbacks[i]);
+				cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
+				memcpy(&tmp[index], (uint8_t *)&d, sizeof(d));
+				index += sizeof(d);
+				kprintf("%d;", d);
+			}
+		}
+		kputs("\n");
+
+		ASSERT(index <= 60);
+		protocol_data(&radio.fd, &proto, id, tmp, index);
 }
 
-static int cmd_slave_data(KFile *fd, Protocol *proto)
+static int cmd_slave_broadcast(KFile *_fd, Protocol *proto)
 {
-	return 0;
+	int ret = protocol_checkReply(&radio.fd, &proto);
+	if (ret == PROTO_ACK)
+	{
+		// Rimango in attesa del prossimo comando
+		// dal master, non vado in stop mode
+		// disattivare il watchdog.
+		// o attivare il timer per farlo resettare.
+		return 0;
+	}
+
+	/*
+	 * Riprovo a inviare il messaggio di broadcast
+	 * tra un po' di tempo perchè il master è occupato
+	 * o non ha capito.
+	 */
+	if (ret == PROTO_NACK)
+	{
+		sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
+		kprintf("Sent[%d]\n", sent);
+	}
+
+	kprintf("err[%d]\n", ret);
+	return ret;
 }
 
 const Cmd slave_cmd[] = {
-	{ CMD_BROADCAST, cmd_slave_broadcast },
-	{ CMD_DATA,      cmd_slave_data      },
+	{ CMD_TYPE_BROADCAST,     cmd_slave_broadcast    }, /* Check reply from master    */
+	{ CMD_TYPE_DATA, cmd_slave_data }, /* Send all measure to master */
 	{ 0     , NULL }
 };
 
 void cmd_poll(KFile *fd, Protocol *proto)
 {
+	kfile_read(fd, proto, sizeof(Protocol));
+
+	/*
+	 * Check errors on received packet.
+	 */
+	int ret = kfile_error(fd);
+	if (ret < 0)
+	{
+		kfile_clearerr(fd);
+		if (ret == RADIO_RX_TIMEOUT)
+			return PROTO_TIMEOUT;
+
+		return PROTO_ERR;
+	}
+
+	/*
+	 * Ok, lets go to see if packet is for us, and
+	 * save the status in devices list.
+	 */
+	ASSERT(proto);
+	/* se sono slave devo vedere se il pacchetto è per me */
+	if (slave)
+		slave_id == proto->addr;
+		continue
+
+	/* se il pacchetto è per me cerco nella lista se ho ricevuto
+	 * il messaggio in precedenza */
+	for (int i = 0; i < CMD_DEVICES; i++)
+	{
+		if (local_dev[i].type == proto->type)
+		{
+			break;
+		}
+		/*
+		 * cerco nella lista, se non c'è l'aggiungo con stato new,
+		 * altrimenti verifico lo stato.
+		 *
+		 * Ogni comando che invio deve aggiornare lo stato dei devices
+		 * in modo da capire se quando mi arriva il messaggio, questo è
+		 * una risposta o un nuovo messaggio da processare.
+		 * la stessa cosa la deve fare il master.
+		 *
+		 */
+
+
+
+		if (local_dev[i].addr == proto->addr)
+		{
+			reply = PROTO_ACK;
+			break;
+		}
+		else if (!local_dev[i].addr)
+		{
+			local_dev[i].addr =  proto->addr;
+			local_dev[i].len =  proto->len;
+			memcpy(local_dev[i].data, proto->data, proto->len);
+			reply = PROTO_ACK;
+			break;
+		}
+		else
+			reply = PROTO_NACK;
+	}
+
+	// verificare
+	if (proto->type == CMD_TYPE_REPLY)
+		return PROTO_OK;
+	else
+		return PROTO_WRONG_ADDR;
+
+	return PROTO_ERR;
+
+	cmd_t callback = protocol_search(proto);
+
+	if (callback)
+		callback(fd, proto);
+
 	for (int i = 0; i < CMD_DEVICES; i++)
 	{
 		kprintf("%d: ", i);
@@ -138,3 +270,7 @@ void cmd_poll(KFile *fd, Protocol *proto)
 	kputs("-----\n");
 }
 
+void cmd_init(const RadioCfg *cfg)
+{
+	radio_cfg = cfg;
+}

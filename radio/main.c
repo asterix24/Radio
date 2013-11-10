@@ -60,6 +60,7 @@
 #include <string.h>
 
 static Radio radio;
+static Protocol proto;
 
 static void init(void)
 {
@@ -76,12 +77,11 @@ static void init(void)
 
 }
 
-static Protocol proto;
-uint8_t tmp[60];
 
 int main(void)
 {
 	init();
+	/* Send first broadcast message with us configuration */
 	uint8_t id = radio_cfg_id();
 	kprintf("%s [%d]\n", id == RADIO_MASTER ? "MASTER" : "SLAVE", id);
 
@@ -93,22 +93,25 @@ int main(void)
 			//kputs("Ready:\n");
 			memset(&proto, 0, sizeof(Protocol));
 			protocol_poll(&radio.fd, &proto);
-			memset(&proto, 0, sizeof(Protocol));
-			cmd_poll(&radio.fd, &proto);
+			cmd_poll();
 		}
 	}
 	else
 	{
 		protocol_init(slave_cmd);
+
+		int sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
+		kprintf("Sent broadcast[%d]\n", sent);
+
 		while (1)
 		{
+			//Clean up message
+			memset(&proto, 0, sizeof(Protocol));
 
-			const RadioCfg *cfg = radio_cfg(id);
+			// Check message from master
+			radio_timeout(&radio, 5000);
+			protocol_poll(&radio.fd, &proto);
 
-			int sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
-			kprintf("Sent[%d]\n", sent);
-
-			radio_timeout(&radio, 1000);
 
 			/*
 			memset(&proto, 0, sizeof(Protocol));
