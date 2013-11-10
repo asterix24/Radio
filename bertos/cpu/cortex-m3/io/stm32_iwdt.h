@@ -26,26 +26,47 @@
  * invalidate any other reasons why the executable file might be covered by
  * the GNU General Public License.
  *
- * Copyright 2011 Develer S.r.l. (http://www.develer.com/)
+ * Copyright 2013 Develer S.r.l. (http://www.develer.com/)
  *
  * -->
  *
- * \brief STM32 Power Control.
+ * \brief STM32 Indipendet Watchdog controlle.
  *
- * \author Andrea Righi <arighi@develer.com>
+ * \author Daniele Basile <asterix@develer.com>
  */
-#ifndef STM32_PWR_H
-#define STM32_PWR_H
+#ifndef STM32_IWDT_H
+#define STM32_IWDT_H
 
 #include <io/stm32.h>
 
-/* Power Control */
-struct stm32_pwr
+#define IWDG_WA_EN     ((uint16_t)0x5555)
+#define IWDG_WA_DIS    ((uint16_t)0x0000)
+#define IWDG_RESET_KEY ((uint16_t)0xAAAA)
+#define IWDG_START_KEY ((uint16_t)0xCCCC)
+
+/*
+ * IWDG Prescaler
+ */
+#define IWDG_PRESCALER_4            ((uint8_t)0x00)
+#define IWDG_PRESCALER_8            ((uint8_t)0x01)
+#define IWDG_PRESCALER_16           ((uint8_t)0x02)
+#define IWDG_PRESCALER_32           ((uint8_t)0x03)
+#define IWDG_PRESCALER_64           ((uint8_t)0x04)
+#define IWDG_PRESCALER_128          ((uint8_t)0x05)
+#define IWDG_PRESCALER_256          ((uint8_t)0x06)
+
+/*
+ * IWDG Flag
+ */
+#define IWDG_FLAG_PVU               ((uint16_t)0x0001)
+#define IWDG_FLAG_RVU               ((uint16_t)0x0002)
+
+struct stm32_iwdt
 {
-	reg32_t CR;
-	reg32_t CSR;
+	reg32_t KR;
+	reg32_t PR;
+	reg32_t RLR;
+	reg32_t SR;
 };
 
-#define PWR_CR_DBP	0x00000100
-
-#endif /* STM32_PWR_H */
+#endif /* STM32_IWDT_H */
