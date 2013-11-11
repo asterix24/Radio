@@ -146,7 +146,6 @@ void protocol_decode(Radio *fd, Protocol *proto)
 	kputs("\n");
 }
 
-
 void protocol_encode(Protocol *proto)
 {
 	kprintf("Encode data\n");
@@ -166,6 +165,7 @@ void protocol_encode(Protocol *proto)
 			cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
 			memcpy(&proto->data[index], (uint8_t *)&d, sizeof(d));
 			index += sizeof(d);
+			proto->len += sizeof(d);
 			kprintf("%d;", d);
 		}
 		if (cfg->fmt[i] == 'H')
@@ -177,6 +177,7 @@ void protocol_encode(Protocol *proto)
 			cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
 			memcpy(&proto->data[index], (uint8_t *)&d, sizeof(d));
 			index += sizeof(d);
+			proto->len += sizeof(d);
 			kprintf("%d;", d);
 		}
 	}
