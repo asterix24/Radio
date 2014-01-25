@@ -114,19 +114,24 @@ void cmd_slavePoll(KFile *fd, Protocol *proto)
 	if (slave_status == CMD_SLAVE_STATUS_WAIT)
 	{
 		kprintf("Aspetto..\n");
+		iwdt_reset();
 		return;
 	}
 
 	if (slave_status == CMD_SLAVE_STATUS_BROADCAST)
 	{
 		uint8_t id = radio_cfg_id();
-		int sent = protocol_broadcast(fd, proto, id, (const uint8_t *)"broadcast", sizeof("broadcast"));
-		kprintf("Broadcast sent[%d] %s[%d]\n", proto->type, sent < 0 ? "Error!":"Ok", sent);
+		int sent = protocol_broadcast(fd, proto, id,
+				(const uint8_t *)"broadcast", sizeof("broadcast"));
+		kprintf("Broadcast sent[%d] %s[%d]\n",
+					proto->type, sent < 0 ? "Error!":"Ok", sent);
+		iwdt_start();
 	}
 
 	if (slave_status == CMD_SLAVE_STATUS_SHUTDOWN)
 	{
 		kprintf("Spengo..\n");
+		go_standby();
 	}
 }
 
@@ -160,6 +165,7 @@ void cmd_poll(KFile *fd, Protocol *proto)
 				local_dev[i].status = CMD_WAIT_DEV;
 				continue;
 			}
+
 			if (local_dev[i].status == CMD_WAIT_DEV)
 			{
 			}
@@ -171,4 +177,5 @@ void cmd_poll(KFile *fd, Protocol *proto)
 	}
 	kputs("-----\n");
 }
+
 
