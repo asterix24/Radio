@@ -42,52 +42,14 @@
 #include <cfg/debug.h>
 
 #include <io/stm32.h>
-#include <io/stm32_pwr.h>
 
 #include <cpu/power.h> // cpu_relax()
 
 #include <drv/rtc.h>
 
 /* PWR registers base */
-static struct PWR *PWR = (struct PWR *)PWR_BASE;
+static struct stm32_pwr *PWR = (struct stm32_pwr *)PWR_BASE;
 
-/* RTC clock source: LSE */
-#define RTC_CLKSRC	0x00000100
-/* RTC clock: 32768 Hz */
-#define RTC_CLOCK	32768
-/* RTC clock period (in ms) */
-#define RTC_PERIOD      1000
-
-/* RTC control register */
-#define RTC_CRH		(*(reg16_t *)(RTC_BASE + 0x00))
-#define RTC_CRL		(*(reg16_t *)(RTC_BASE + 0x04))
-
-#define RTC_CRL_SECIE         BV(0)
-#define RTC_CRL_ALRIE         BV(1)
-#define RTC_CRL_OWIE          BV(2)
-
-#define RTC_CRL_SECF          BV(0)
-#define RTC_CRL_ALRF          BV(1)
-#define RTC_CRL_OWF           BV(2)
-#define RTC_CRL_RSF           BV(3)
-#define RTC_CRL_CNF           BV(4)
-#define RTC_CRL_RTOFF         BV(5)
-
-/* RTC prescaler load register */
-#define RTC_PRLH	(*(reg16_t *)(RTC_BASE + 0x08))
-#define RTC_PRLL	(*(reg16_t *)(RTC_BASE + 0x0c))
-
-/* RTC prescaler divider register */
-#define RTC_DIVH	(*(reg16_t *)(RTC_BASE + 0x10))
-#define RTC_DIVL	(*(reg16_t *)(RTC_BASE + 0x14))
-
-/* RTC counter register */
-#define RTC_CNTH	(*(reg16_t *)(RTC_BASE + 0x18))
-#define RTC_CNTL	(*(reg16_t *)(RTC_BASE + 0x1c))
-
-/* RTC alarm register */
-#define RTC_ALRH	(*(reg16_t *)(RTC_BASE + 0x20))
-#define RTC_ALRL	(*(reg16_t *)(RTC_BASE + 0x24))
 
 static void rtc_enterConfig(void)
 {
@@ -150,3 +112,4 @@ int rtc_init(void)
 
 	return 0;
 }
+

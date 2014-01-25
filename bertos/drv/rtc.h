@@ -48,7 +48,6 @@
 typedef uint32_t rtc_clock_t;
 
 rtc_clock_t rtc_time(void);
-
 void rtc_setTime(rtc_clock_t date);
 
 int rtc_init(void);
