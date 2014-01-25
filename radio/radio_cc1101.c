@@ -238,7 +238,7 @@ static size_t radio_recv(struct KFile *_fd, void *buf, size_t size)
 	{
 		radio_goIdle();
 		cc1101_strobe(CC1101_SFRX);
-		LOG_ERR("Rx timeout..\n");
+		LOG_INFO("Rx timeout..\n");
 		fd->error = RADIO_RX_TIMEOUT;
 		return RADIO_RX_TIMEOUT;
 	}
