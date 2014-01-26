@@ -50,8 +50,8 @@ void go_standby(void)
 	/* Shut down all clocks. */
 	stm32_gpioPinConfig(GPIOA, 0xFFFF, GPIO_MODE_AIN, GPIO_SPEED_50MHZ);
 	stm32_gpioPinConfig(GPIOB, 0xFFFF, GPIO_MODE_AIN, GPIO_SPEED_50MHZ);
-	RCC->APB2ENR = 0;
-	RCC->APB1ENR = 0;
+	//RCC->APB2ENR = 0;
+	//RCC->APB1ENR = 0;
 
 	/* Clear Wake-up flag */
 	PWR->CR |= BV(2); //PWR_CR_CWUF;
