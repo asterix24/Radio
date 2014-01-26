@@ -37,7 +37,8 @@ const Cmd *proto_cmd;
 
 static cmd_t protocol_search(Protocol *proto)
 {
-	for (int i = 0; (proto_cmd[i].id != 0) && (proto_cmd[i].callback != NULL); i++)
+	for (int i = 0; (proto_cmd[i].id != 0) &&
+				(proto_cmd[i].callback != NULL); i++)
 		if (proto->type == proto_cmd[i].id)
 			return proto_cmd[i].callback;
 
@@ -68,7 +69,8 @@ int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type)
 	return check_err(fd);
 }
 
-int protocol_sendByte(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, uint8_t data)
+int protocol_sendByte(KFile *fd, Protocol *proto, uint8_t addr,
+										    uint8_t type, uint8_t data)
 {
 	proto->len = sizeof(data);
 	memcpy(proto->data, &data, sizeof(data));
@@ -76,7 +78,8 @@ int protocol_sendByte(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, ui
 	return protocol_send(fd, proto, addr, type);
 }
 
-int protocol_sendBuf(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, const uint8_t *data, size_t len)
+int protocol_sendBuf(KFile *fd, Protocol *proto, uint8_t addr,
+							uint8_t type, const uint8_t *data, size_t len)
 {
 	ASSERT(len < PROTO_DATALEN);
 	proto->len = len;
@@ -121,7 +124,7 @@ void protocol_decode(Radio *fd, Protocol *proto)
 	{
 		if (index > proto->len)
 		{
-			kprintf("Buffer overun..");
+			//kprintf("Buffer overun..");
 			break;
 		}
 
@@ -141,6 +144,15 @@ void protocol_decode(Radio *fd, Protocol *proto)
 			memcpy(&d, &proto->data[index], sizeof(uint16_t));
 			kprintf("%d;", d);
 			index += sizeof(uint16_t);
+		}
+		/* 'I': 4 byte unsigned */
+		if (cfg->fmt[j] == 'I')
+		{
+			ASSERT(index <= proto->len);
+			uint32_t d;
+			memcpy(&d, &proto->data[index], sizeof(uint32_t));
+			kprintf("%ld;", d);
+			index += sizeof(uint32_t);
 		}
 	}
 	kputs("\n");
@@ -179,6 +191,18 @@ void protocol_encode(Protocol *proto)
 			index += sizeof(d);
 			proto->len += sizeof(d);
 			kprintf("%d;", d);
+		}
+		if (cfg->fmt[i] == 'I')
+		{
+			uint32_t d;
+			ASSERT(cfg->callbacks[i]);
+			ASSERT(index < PROTO_DATALEN);
+
+			cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
+			memcpy(&proto->data[index], (uint8_t *)&d, sizeof(d));
+			index += sizeof(d);
+			proto->len += sizeof(d);
+			kprintf("%ld;", d);
 		}
 	}
 	kputs("\n");

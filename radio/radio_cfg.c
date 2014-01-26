@@ -50,24 +50,27 @@
 
 const RadioCfg radio_cfg_table[] =
 {
-	{ 1, "hH", sizeof("hH"),
+	{ 1, "hHI", sizeof("hHI"),
 		{
 			measure_intTemp,
 			measure_intVref,
+			measure_time,
 			NULL,
 		},
 	},
-	{ 2, "hH", sizeof("hH"),
+	{ 2, "hHI", sizeof("hHI"),
 		{
 			measure_intTemp,
 			measure_intVref,
+			measure_time,
 			NULL,
 		},
 	},
-	{ 3, "hH", sizeof("hH"),
+	{ 3, "hHI", sizeof("hHI"),
 		{
 			measure_intTemp,
 			measure_intVref,
+			measure_time,
 			NULL,
 		},
 	},

@@ -37,6 +37,7 @@
 
 #include <drv/gpio_stm32.h>
 #include <drv/clock_stm32.h>
+#include <drv/rtc.h>
 
 #include <string.h>
 
@@ -57,3 +58,13 @@ int measure_intVref(uint8_t *data, size_t len)
 
 	return 0;
 }
+
+int measure_time(uint8_t *data, size_t len)
+{
+	ASSERT(len >= sizeof(uint32_t));
+	uint32_t t = rtc_time();
+	memcpy(data, &t, sizeof(uint32_t));
+
+	return 0;
+}
+
