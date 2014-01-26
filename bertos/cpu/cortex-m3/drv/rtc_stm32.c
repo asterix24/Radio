@@ -61,6 +61,10 @@ static struct stm32_pwr *PWR = (struct stm32_pwr *)PWR_BASE;
 
 static void rtc_enterConfig(void)
 {
+	PWR->CR |= PWR_CR_DBP;
+	while (!(RTC_CRL & RTC_CRL_RTOFF))
+		cpu_relax();
+
 	/* Enter configuration mode */
 	RTC_CRL |= RTC_CRL_CNF;
 }
@@ -69,8 +73,11 @@ static void rtc_exitConfig(void)
 {
 	/* Exit from configuration mode */
 	RTC_CRL &= ~RTC_CRL_CNF;
+
 	while (!(RTC_CRL & RTC_CRL_RTOFF))
 		cpu_relax();
+
+	PWR->CR &= ~PWR_CR_DBP;
 }
 
 uint32_t rtc_time(void)
@@ -83,6 +90,14 @@ void rtc_setTime(uint32_t val)
 	rtc_enterConfig();
 	RTC_CNTH = (val >> 16) & 0xffff;
 	RTC_CNTL = val & 0xffff;
+	rtc_exitConfig();
+}
+
+void rtc_setAlarm(rtc_clock_t val)
+{
+	rtc_enterConfig();
+	RTC_ALRH = (val >> 16) & 0xffff;
+	RTC_ALRL = val & 0xffff;
 	rtc_exitConfig();
 }
 
@@ -139,7 +154,6 @@ int rtc_init(void)
 
 	/* Disable access to the RTC registers */
 	PWR->CR &= ~PWR_CR_DBP;
-	kputs("28\n");
 
 	return 0;
 }
