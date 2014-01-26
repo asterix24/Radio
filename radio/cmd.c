@@ -32,11 +32,11 @@
 #include <cfg/debug.h>
 
 #include <drv/timer.h>
+#include <drv/rtc.h>
 
 #include <string.h>
 
 static Devices local_dev[CMD_DEVICES];
-static uint8_t slave_status;
 
 static int cmd_master_broadcast(KFile *fd, Protocol *proto)
 {
@@ -44,6 +44,7 @@ static int cmd_master_broadcast(KFile *fd, Protocol *proto)
 	uint8_t reply = PROTO_ACK;
 	for (int i = 0; i < CMD_DEVICES; i++)
 	{
+		local_dev[i].time = rtc_time();
 		if (local_dev[i].addr == proto->addr)
 		{
 			break;
@@ -52,7 +53,6 @@ static int cmd_master_broadcast(KFile *fd, Protocol *proto)
 		{
 			local_dev[i].addr =  proto->addr;
 			local_dev[i].status = CMD_NEW_DEV;
-			local_dev[i].timeout = timer_clock();
 			break;
 		}
 		else
@@ -61,9 +61,7 @@ static int cmd_master_broadcast(KFile *fd, Protocol *proto)
 		}
 	}
 
-	//proto->data[proto->len] = '\0';
-	kprintf("type[%d], addr[%d], data[%s]->", proto->type, proto->addr, proto->data);
-	kprintf("reply[%d]\n", reply);
+	kprintf("type[%d]addr[%d]reply[%d]\n", proto->type, proto->addr, reply);
 
 	return protocol_sendByte(fd, proto, proto->addr, proto->type, reply);
 }
@@ -76,29 +74,62 @@ static int cmd_master_data(KFile *_fd, Protocol *proto)
 	return 0;
 }
 
+static int cmd_master_sleep(KFile *fd, Protocol *proto)
+{
+	(void)fd;
+	(void)proto;
+	kputs("Sleep ACK\n");
+
+	for (int i = 0; i < CMD_DEVICES; i++)
+	{
+		if (local_dev[i].addr == proto->addr)
+		{
+			local_dev[i].status = CMD_SLEEP_DEV;
+			local_dev[i].time = rtc_time();
+			break;
+		}
+	}
+	return 0;
+}
+
 const Cmd master_cmd[] = {
 	{ CMD_BROADCAST, cmd_master_broadcast },
 	{ CMD_DATA,      cmd_master_data      },
+	{ CMD_SLEEP,     cmd_master_sleep     },
 	{ 0   , NULL }
 };
+
+
+
+static uint8_t slave_status;
+static uint8_t retry;
+
+static int cmd_slave_sleep(KFile *fd, Protocol *proto)
+{
+	slave_status = CMD_SLAVE_STATUS_SHUTDOWN;
+	kputs("cmd sleep\n");
+	return protocol_sendByte(fd, proto, proto->addr, proto->type, PROTO_ACK);
+}
 
 static int cmd_slave_broadcast(KFile *fd, Protocol *proto)
 {
 	(void)fd;
-	kprintf("Master broadcast->reply[%s]\n", proto->data[0] == PROTO_ACK ? "ACK" : "NACK");
-	slave_status = CMD_SLAVE_STATUS_WAIT;
+	if (proto->data[0] == PROTO_ACK)
+	{
+		slave_status = CMD_SLAVE_STATUS_WAIT;
+		kputs("Broadcast ACK\n");
+	}
+	else
+		kputs("Broadcast NACK\n");
+
 	return 0;
 }
 
 static int cmd_slave_data(KFile *fd, Protocol *proto)
 {
-	slave_status = CMD_SLAVE_STATUS_SHUTDOWN;
-
-	kprintf("type[%d], addr[%d], data[%s]\n", proto->type, proto->addr, proto->data);
-	kprintf("Send data:");
+	kprintf("Send data:type[%d], addr[%d]\n", proto->type, proto->addr);
 	memset(proto, 0, sizeof(Protocol));
 	protocol_encode(proto);
-	kprintf("type[%d], addr[%d]\n", proto->type, proto->addr);
 
 	return protocol_send(fd, proto, radio_cfg_id(), CMD_DATA);
 }
@@ -106,6 +137,7 @@ static int cmd_slave_data(KFile *fd, Protocol *proto)
 const Cmd slave_cmd[] = {
 	{ CMD_BROADCAST, cmd_slave_broadcast },
 	{ CMD_DATA,      cmd_slave_data      },
+	{ CMD_SLEEP,     cmd_slave_sleep      },
 	{ 0     , NULL }
 };
 
@@ -113,26 +145,24 @@ void cmd_slavePoll(KFile *fd, Protocol *proto)
 {
 	if (slave_status == CMD_SLAVE_STATUS_WAIT)
 	{
-		kprintf("Aspetto..\n");
-		iwdt_reset();
+		kprintf("wait..(%ld)\n", rtc_time());
 		return;
 	}
 
-	if (slave_status == CMD_SLAVE_STATUS_BROADCAST)
+	if ((slave_status == CMD_SLAVE_STATUS_SHUTDOWN) || (retry == 3))
 	{
-		uint8_t id = radio_cfg_id();
-		int sent = protocol_broadcast(fd, proto, id,
-				(const uint8_t *)"broadcast", sizeof("broadcast"));
-		kprintf("Broadcast sent[%d] %s[%d]\n",
-					proto->type, sent < 0 ? "Error!":"Ok", sent);
-		iwdt_start();
-	}
-
-	if (slave_status == CMD_SLAVE_STATUS_SHUTDOWN)
-	{
+		rtc_setAlarm(30);
 		kprintf("Spengo..\n");
 		go_standby();
 	}
+
+	memset(proto, 0, sizeof(Protocol));
+	protocol_encode(proto);
+	int sent = protocol_send(fd, proto, radio_cfg_id(), CMD_BROADCAST);
+	kprintf("Broadcast sent[%d] %s[%d]\n",
+				proto->type, sent < 0 ? "Error!":"Ok", sent);
+
+	retry += 1;
 }
 
 void cmd_poll(KFile *fd, Protocol *proto)
@@ -143,31 +173,15 @@ void cmd_poll(KFile *fd, Protocol *proto)
 		kprintf("%d: ", i);
 		if (local_dev[i].addr)
 		{
-			if (ticks_to_ms(timer_clock() - local_dev[i].timeout) > CMD_TIMEOUT)
+			kprintf("Addr[%d],St[%d],time[%ld]\n", local_dev[i].addr,
+						local_dev[i].status, local_dev[i].time);
+
+			if ((rtc_time() - local_dev[i].time) > CMD_TIMEOUT)
 			{
-				kprintf("Addr[%d] timeout remove it..\n", local_dev[i].addr);
-				memset(&local_dev[i], 0, sizeof(Devices));
+				int sent = protocol_send(fd, proto, local_dev[i].addr, CMD_SLEEP);
+				kprintf("Sleep sent[%d] %s[%d]\n",
+							proto->type, sent < 0 ? "Error!":"Ok", sent);
 				continue;
-			}
-
-			kprintf("Addr[%d],status[%d],ticks[%ld]\n", local_dev[i].addr,
-						local_dev[i].status, local_dev[i].timeout);
-
-			if (local_dev[i].status == CMD_NEW_DEV)
-			{
-				kprintf("Get data..from[%d]\n", local_dev[i].addr);
-				int ret = protocol_sendBuf(fd, proto, local_dev[i].addr, CMD_DATA,
-						(const uint8_t *)"data_query", sizeof("data_query"));
-
-				if (ret < 0)
-					continue;
-
-				local_dev[i].status = CMD_WAIT_DEV;
-				continue;
-			}
-
-			if (local_dev[i].status == CMD_WAIT_DEV)
-			{
 			}
 		}
 		else

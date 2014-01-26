@@ -47,6 +47,7 @@
  */
 #define CMD_NEW_DEV                  1
 #define CMD_WAIT_DEV                 2
+#define CMD_SLEEP_DEV                3
 
 #define CMD_SLAVE_STATUS_BROADCAST   0
 #define CMD_SLAVE_STATUS_WAIT        1
@@ -57,7 +58,7 @@
  * Settings
  */
 #define CMD_DEVICES                  5
-#define CMD_TIMEOUT               5000 //ms
+#define CMD_TIMEOUT                 10 //ms
 
 struct Protocol;
 typedef int (*cmd_t)(KFile *fd, struct Protocol *proto);
@@ -72,7 +73,7 @@ typedef struct Devices
 {
 	uint8_t addr;
 	uint8_t status;
-	ticks_t timeout;
+	uint32_t time;
 } Devices;
 
 

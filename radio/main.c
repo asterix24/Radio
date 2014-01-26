@@ -30,6 +30,7 @@
 #include "protocol.h"
 #include "cmd.h"
 #include "measure.h"
+#include "iwdg.h"
 
 #include "hw/hw_cc1101.h"
 #include "hw/hw_adc.h"
@@ -56,7 +57,6 @@ static void init(void)
 	IRQ_ENABLE;
 	kdbg_init();
 	timer_init();
-
 	rtc_init();
 
 	spi_init();
@@ -76,16 +76,17 @@ int main(void)
 {
 	init();
 	uint8_t id = radio_cfg_id();
-	kprintf("%s [%d]\n", id == RADIO_MASTER ? "MASTER" : "SLAVE", id);
+	kprintf("%s [%d]\n", id == RADIO_MASTER
+						? "MASTER" : "SLAVE", id);
 
 	if (id == RADIO_MASTER)
 	{
 		protocol_init(master_cmd);
-		radio_timeout(&radio, 5000);
+		radio_timeout(&radio, 1000);
 		while (1)
 		{
-			//kputs("Ready:\n");
 			kprintf("%ld\n", rtc_time());
+
 			protocol_poll(&radio.fd, &proto);
 			cmd_poll(&radio.fd, &proto);
 		}
@@ -93,9 +94,11 @@ int main(void)
 	else
 	{
 		protocol_init(slave_cmd);
+		radio_timeout(&radio, 5000);
 		while (1)
 		{
-			radio_timeout(&radio, 2000);
+			kprintf("%ld\n", rtc_time());
+
 			protocol_poll(&radio.fd, &proto);
 			cmd_slavePoll(&radio.fd, &proto);
 		}
