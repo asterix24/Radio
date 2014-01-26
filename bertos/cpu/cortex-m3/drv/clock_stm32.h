@@ -247,7 +247,11 @@
 #define RCC_BDCR_LSEON             (0x00000001)
 #define RCC_BDCR_LSERDY            (0x00000002)
 #define RCC_BDCR_RTCSEL            (0x00000300)
+#define RCC_BDCR_RTCSEL_LSI        (0x00000200)
+#define RCC_BDCR_RTCSEL_LSE        (0x00000100)
 #define RCC_BDCR_RTCEN             (0x00008000)
+#define RCC_BDCR_RTS               (0x00010000)
+#define RCC_BDCR_LSEBYP            (0x00000004)
 /*\}*/
 
 /* Crystal frequency of the main oscillator (8MHz) */

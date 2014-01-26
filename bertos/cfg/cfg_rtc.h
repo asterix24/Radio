@@ -63,4 +63,13 @@
 
 #define CFG_RTC_CLOCK_SRC   INTERNAL
 
+/* RTC clock:
+ * low externale osc: 32768 Hz
+ * low inernal osc: 40000 Hz
+ */
+#define CFG_RTC_CLOCK	40000
+
+/* RTC clock period (in ms) */
+#define CFG_RTC_PERIOD      1000
+
 #endif /* CFG_RTC_H */

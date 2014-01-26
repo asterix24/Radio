@@ -37,6 +37,14 @@
 
 #include "clock_stm32.h"
 
+#include "cfg/cfg_rtc.h"
+
+// Define logging setting (for cfg/log.h module).
+#define LOG_LEVEL   RTC_LOG_LEVEL
+#define LOG_FORMAT  RTC_LOG_FORMAT
+
+#include <cfg/log.h>
+
 #include <cfg/compiler.h>
 #include <cfg/module.h>
 #include <cfg/debug.h>
@@ -85,30 +93,53 @@ int rtc_init(void)
 	MOD_CHECK(proc);
 #endif
 	/* Enable clock for Power interface */
-	RCC->APB1ENR |= RCC_APB1_PWR;
+	RCC->APB1ENR |= RCC_APB1_PWR | RCC_APB1_BKP;
 
 	/* Enable access to RTC registers */
 	PWR->CR |= PWR_CR_DBP;
 
+	/* Reset bkp domain to change clock source */
+	RCC->BDCR |= RCC_BDCR_RTS;
+	RCC->BDCR &= ~RCC_BDCR_RTS;
+
+#if CFG_RTC_CLOCK_SRC==EXTERNAL // LSE
 	/* Enable LSE */
 	RCC->BDCR |= RCC_BDCR_LSEON;
 	/* Wait for LSE ready */
 	while (!(RCC->BDCR & RCC_BDCR_LSERDY))
 		cpu_relax();
-
 	/* Set clock source and enable RTC peripheral */
-	RCC->BDCR |= RTC_CLKSRC | RCC_BDCR_RTCEN;
+	RCC->BDCR |= RCC_BDCR_RTCSEL_LSE | RCC_BDCR_RTCEN;
+#else // INTERNAL LSI
+
+	/* Start LSI low speed internal oscillator */
+	RCC->CSR |= BV(0);
+	/* Whait for stable lsi clock */
+	while(!(RCC->CSR & BV(1)));
+
+	RCC->BDCR |= RCC_BDCR_RTCSEL_LSI;
+	RCC->BDCR |= RCC_BDCR_RTCEN;
+
+	/* wait syncro */
+	RTC_CRL &= ~RTC_CRL_RSF;
+	while (!(RTC_CRL & RTC_CRL_RSF))
+		cpu_relax();
+
+	rtc_exitConfig();
+
+#endif
 
 	rtc_enterConfig();
 
 	/* Set prescaler */
-	RTC_PRLH = ((RTC_PERIOD * RTC_CLOCK / 1000 - 1) >> 16) & 0xff;
-	RTC_PRLL = ((RTC_PERIOD * RTC_CLOCK / 1000 - 1)) & 0xffff;
+	RTC_PRLH = ((CFG_RTC_PERIOD * CFG_RTC_CLOCK / 1000 - 1) >> 16) & 0xff;
+	RTC_PRLL = ((CFG_RTC_PERIOD * CFG_RTC_CLOCK / 1000 - 1)) & 0xffff;
 
 	rtc_exitConfig();
 
 	/* Disable access to the RTC registers */
 	PWR->CR &= ~PWR_CR_DBP;
+	kputs("28\n");
 
 	return 0;
 }

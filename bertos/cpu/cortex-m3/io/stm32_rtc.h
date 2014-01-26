@@ -39,12 +39,6 @@
 #include <cpu/types.h>
 
 
-/* RTC clock source: LSE */
-#define RTC_CLKSRC	0x00000100
-/* RTC clock: 32768 Hz */
-#define RTC_CLOCK	32768
-/* RTC clock period (in ms) */
-#define RTC_PERIOD      1000
 
 /* RTC control register */
 #define RTC_CRH		(*(reg16_t *)(RTC_BASE + 0x00))
