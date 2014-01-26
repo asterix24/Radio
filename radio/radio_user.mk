@@ -11,6 +11,7 @@ radio_PROGRAMMER_PORT = none
 radio_USER_CSRC = \
 	$(radio_SRC_PATH)/main.c \
 	bertos/cpu/cortex-m3/drv/spi_stm32.c \
+	bertos/cpu/cortex-m3/drv/rtc_stm32.c \
 	bertos/drv/spi.c \
 	bertos/drv/cc1101.c \
 	$(radio_SRC_PATH)/radio_cc1101.c \

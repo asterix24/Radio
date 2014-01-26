@@ -45,6 +45,7 @@
 #include <drv/timer.h>
 #include <drv/adc.h>
 #include <drv/spi.h>
+#include <drv/rtc.h>
 
 #include <string.h>
 
@@ -56,8 +57,11 @@ static void init(void)
 	kdbg_init();
 	timer_init();
 
+	rtc_init();
+
 	spi_init();
 	adc_init();
+
 
 	radio_cfg_init();
 	radio_init(&radio, ping_low_baud_868);
@@ -77,10 +81,11 @@ int main(void)
 	if (id == RADIO_MASTER)
 	{
 		protocol_init(master_cmd);
-		radio_timeout(&radio, 1000);
+		radio_timeout(&radio, 5000);
 		while (1)
 		{
 			//kputs("Ready:\n");
+			kprintf("%ld\n", rtc_time());
 			protocol_poll(&radio.fd, &proto);
 			cmd_poll(&radio.fd, &proto);
 		}
@@ -90,7 +95,7 @@ int main(void)
 		protocol_init(slave_cmd);
 		while (1)
 		{
-			radio_timeout(&radio, 5000);
+			radio_timeout(&radio, 2000);
 			protocol_poll(&radio.fd, &proto);
 			cmd_slavePoll(&radio.fd, &proto);
 		}
