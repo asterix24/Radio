@@ -37,6 +37,12 @@
 
 #include <cfg/debug.h>
 
+// Define logging setting (for cfg/log.h module).
+#define LOG_LEVEL   3
+#define LOG_FORMAT  0
+
+#include <cfg/log.h>
+
 #include <io/kfile.h>
 
 #include <cpu/irq.h>
@@ -76,7 +82,7 @@ int main(void)
 {
 	init();
 	uint8_t id = radio_cfg_id();
-	kprintf("%s [%d]\n", id == RADIO_MASTER
+	LOG_INFO("%s [%d]\n", id == RADIO_MASTER
 						? "MASTER" : "SLAVE", id);
 
 	if (id == RADIO_MASTER)

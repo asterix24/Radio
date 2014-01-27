@@ -57,8 +57,8 @@
  * Settings
  */
 #define CMD_DEVICES                  5
-#define CMD_TIMEOUT                 10 //s
-#define CMD_WAKEUP_TIME             10 //s
+#define CMD_TIMEOUT                 60 //s
+#define CMD_WAKEUP_TIME             60 //s
 #define CMD_MAX_RETRY                3
 
 struct Protocol;

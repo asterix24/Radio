@@ -46,23 +46,22 @@ static Devices local_dev[CMD_DEVICES];
 
 static int cmd_master_broadcast(KFile *_fd, Protocol *proto)
 {
-	uint8_t reply = PROTO_ACK;
+	uint8_t reply = PROTO_NACK;
 	for (int i = 0; i < CMD_DEVICES; i++)
 	{
-		local_dev[i].timestamp = proto->timestamp;
-		local_dev[i].local_timestamp = rtc_time();
 		if (local_dev[i].addr == proto->addr)
 		{
+			local_dev[i].timestamp = proto->timestamp;
+			reply = PROTO_ACK;
 			break;
 		}
 		else if (!local_dev[i].addr)
 		{
 			local_dev[i].addr =  proto->addr;
+			local_dev[i].local_timestamp = rtc_time();
+			local_dev[i].timestamp = proto->timestamp;
+			reply = PROTO_ACK;
 			break;
-		}
-		else
-		{
-			reply = PROTO_NACK;
 		}
 	}
 
@@ -174,12 +173,14 @@ static void cmd_masterPoll(KFile *fd, Protocol *proto)
 	if (monitor_int == 10)
 	{
 		monitor_int = 0;
+		kputs("-----\n");
 		for (int i = 0; i < CMD_DEVICES; i++)
 		{
 			kprintf("%d: ", i);
 			if (local_dev[i].addr)
 			{
-				kprintf("Addr[%d]T[%ld]\n", local_dev[i].addr, local_dev[i].timestamp);
+				kprintf("Addr[%d]LT[%ld]T[%ld]\n", local_dev[i].addr,
+						local_dev[i].local_timestamp, local_dev[i].timestamp);
 			}
 			else
 			{

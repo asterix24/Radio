@@ -31,6 +31,12 @@
 
 #include <cfg/debug.h>
 
+// Define logging setting (for cfg/log.h module).
+#define LOG_LEVEL   2
+#define LOG_FORMAT  0
+
+#include <cfg/log.h>
+
 #include <drv/rtc.h>
 
 #include <string.h>
@@ -67,7 +73,9 @@ int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type)
 	proto->addr = addr;
 
 	kfile_write(fd, proto, sizeof(Protocol));
-	kprintf("Send[%d] to [%d]\n", proto->type, proto->addr);
+
+	LOG_INFO("Send[%d] to [%d]\n", proto->type, proto->addr);
+
 	return check_err(fd);
 }
 
@@ -105,7 +113,8 @@ int protocol_poll(KFile *fd, Protocol *proto)
 	if (addr != RADIO_MASTER && proto->addr != addr)
 		return PROTO_WRONG_ADDR;
 
-	kprintf("poll recv[%d]\n", proto->type);
+	LOG_INFO("Poll cmd[%d]\n", proto->type);
+
 	cmd_t callback = protocol_search(proto);
 	if (callback)
 		return callback(fd, proto);
@@ -116,20 +125,16 @@ int protocol_poll(KFile *fd, Protocol *proto)
 
 void protocol_decode(Radio *fd, Protocol *proto)
 {
-	kprintf("Decode data:len[%d]\n", proto->len);
+	LOG_INFO("Decode len[%d]\n", proto->len);
 	uint8_t id = radio_cfg_id();
 	const RadioCfg *cfg = radio_cfg(id);
-	kprintf("$%d;%d;%d;%ld;", proto->addr, fd->lqi, fd->rssi,
-												proto->timestamp);
+	kprintf("$%d;%d;%d;%ld;", proto->addr, fd->lqi, fd->rssi, proto->timestamp);
 
 	size_t index = 0;
 	for (size_t j = 0; j < cfg->fmt_len; j++)
 	{
 		if (index > proto->len)
-		{
-			//kprintf("Buffer overun..");
 			break;
-		}
 
 		/* 'h': 2 byte signed */
 		if (cfg->fmt[j] == 'h')
@@ -163,7 +168,7 @@ void protocol_decode(Radio *fd, Protocol *proto)
 
 void protocol_encode(Protocol *proto)
 {
-	kprintf("Encode data\n");
+	LOG_INFO("Encode data\n");
 	uint8_t id = radio_cfg_id();
 	const RadioCfg *cfg = radio_cfg(id);
 
