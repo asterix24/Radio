@@ -31,6 +31,8 @@
 
 #include <cfg/debug.h>
 
+#include <drv/rtc.h>
+
 #include <string.h>
 
 const Cmd *proto_cmd;
@@ -117,7 +119,8 @@ void protocol_decode(Radio *fd, Protocol *proto)
 	kprintf("Decode data:len[%d]\n", proto->len);
 	uint8_t id = radio_cfg_id();
 	const RadioCfg *cfg = radio_cfg(id);
-	kprintf("$%d;%d;%d;%ld", proto->addr, fd->lqi, fd->rssi,proto->timestamp);
+	kprintf("$%d;%d;%d;%ld;", proto->addr, fd->lqi, fd->rssi,
+												proto->timestamp);
 
 	size_t index = 0;
 	for (size_t j = 0; j < cfg->fmt_len; j++)
@@ -163,6 +166,8 @@ void protocol_encode(Protocol *proto)
 	kprintf("Encode data\n");
 	uint8_t id = radio_cfg_id();
 	const RadioCfg *cfg = radio_cfg(id);
+
+	proto->timestamp = rtc_time();
 
 	kputs("$");
 	size_t index = 0;

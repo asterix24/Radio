@@ -48,17 +48,17 @@
 #define CMD_WAIT_DEV                 2
 #define CMD_SLEEP_DEV                3
 
-#define CMD_SLAVE_STATUS_BROADCAST   0
-#define CMD_SLAVE_STATUS_WAIT        1
-#define CMD_SLAVE_STATUS_DATA        2
-#define CMD_SLAVE_STATUS_SHUTDOWN    3
+#define CMD_SLAVE_STATUS_BROADCAST       0
+#define CMD_SLAVE_STATUS_WAIT            1
+#define CMD_SLAVE_STATUS_DATA            2
+#define CMD_SLAVE_STATUS_SHUTDOWN        3
 
 /*
  * Settings
  */
 #define CMD_DEVICES                  5
-#define CMD_TIMEOUT                 60 //s
-#define CMD_WAKEUP_TIME             60 //s
+#define CMD_TIMEOUT                 10 //s
+#define CMD_WAKEUP_TIME             10 //s
 #define CMD_MAX_RETRY                3
 
 struct Protocol;
@@ -73,8 +73,8 @@ typedef struct Cmd
 typedef struct Devices
 {
 	uint8_t addr;
-	uint8_t status;
-	uint32_t time;
+	uint32_t timestamp;
+	uint32_t local_timestamp;
 } Devices;
 
 
@@ -82,8 +82,7 @@ typedef struct Devices
 extern const Cmd master_cmd[];
 extern const Cmd slave_cmd[];
 
-void cmd_poll(KFile *fd, struct Protocol *proto);
-void cmd_slavePoll(KFile *fd, struct Protocol *proto);
+void cmd_poll(uint8_t id, KFile *fd, struct Protocol *proto);
 void cmd_init(void);
 
 #endif /* RADIO_CMD_H */

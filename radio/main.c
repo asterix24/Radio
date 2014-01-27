@@ -83,25 +83,19 @@ int main(void)
 	{
 		protocol_init(master_cmd);
 		radio_timeout(&radio, 1000);
-		while (1)
-		{
-			kprintf("%ld\n", rtc_time());
-
-			protocol_poll(&radio.fd, &proto);
-			cmd_poll(&radio.fd, &proto);
-		}
 	}
 	else
 	{
 		protocol_init(slave_cmd);
 		radio_timeout(&radio, 5000);
-		while (1)
-		{
-			kprintf("%ld\n", rtc_time());
+	}
 
-			protocol_poll(&radio.fd, &proto);
-			cmd_slavePoll(&radio.fd, &proto);
-		}
+	while (1)
+	{
+		kprintf("%ld\n", rtc_time());
+
+		protocol_poll(&radio.fd, &proto);
+		cmd_poll(id, &radio.fd, &proto);
 	}
 
 	return 0;

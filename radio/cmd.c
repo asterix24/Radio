@@ -44,12 +44,13 @@
 
 static Devices local_dev[CMD_DEVICES];
 
-static int cmd_master_broadcast(KFile *fd, Protocol *proto)
+static int cmd_master_broadcast(KFile *_fd, Protocol *proto)
 {
 	uint8_t reply = PROTO_ACK;
 	for (int i = 0; i < CMD_DEVICES; i++)
 	{
-		local_dev[i].time = rtc_time();
+		local_dev[i].timestamp = proto->timestamp;
+		local_dev[i].local_timestamp = rtc_time();
 		if (local_dev[i].addr == proto->addr)
 		{
 			break;
@@ -57,7 +58,6 @@ static int cmd_master_broadcast(KFile *fd, Protocol *proto)
 		else if (!local_dev[i].addr)
 		{
 			local_dev[i].addr =  proto->addr;
-			local_dev[i].status = CMD_NEW_DEV;
 			break;
 		}
 		else
@@ -69,7 +69,11 @@ static int cmd_master_broadcast(KFile *fd, Protocol *proto)
 	LOG_INFO("Broadcast: type[%d]addr[%d]reply[%d]\n",
 							proto->type, proto->addr, reply);
 
-	return protocol_sendByte(fd, proto, proto->addr, proto->type, reply);
+
+	Radio *fd = RADIO_CAST(_fd);
+	protocol_decode(fd, proto);
+
+	return protocol_sendByte(_fd, proto, proto->addr, proto->type, reply);
 }
 
 
@@ -77,18 +81,6 @@ static int cmd_master_sleep(KFile *fd, Protocol *proto)
 {
 	(void)fd;
 	(void)proto;
-	kputs("Sleep ACK\n");
-
-	for (int i = 0; i < CMD_DEVICES; i++)
-	{
-		if (local_dev[i].addr == proto->addr)
-		{
-			local_dev[i].status = CMD_SLEEP_DEV;
-			local_dev[i].time = rtc_time();
-			break;
-		}
-	}
-
 	LOG_INFO("Sleep: type[%d]addr[%d]\n",
 							proto->type, proto->addr);
 	return 0;
@@ -108,17 +100,19 @@ static uint32_t start_time;
 
 static void slave_shutdown(void)
 {
-	rtc_setAlarm(CMD_WAKEUP_TIME);
-	LOG_INFO("Go Standby, wakeup to %ds\n", CMD_WAKEUP_TIME);
+	rtc_setAlarm(rtc_time() + (uint32_t)CMD_WAKEUP_TIME);
+	LOG_INFO("Go Standby, wakeup to %lds\n", rtc_time() + CMD_WAKEUP_TIME);
 	go_standby();
 }
 
 static int cmd_slave_sleep(KFile *fd, Protocol *proto)
 {
-	slave_status = CMD_SLAVE_STATUS_SHUTDOWN;
 	LOG_INFO("Sleep: type[%d]addr[%d]\n",
 							proto->type, proto->addr);
-	return protocol_sendByte(fd, proto, proto->addr, proto->type, PROTO_ACK);
+
+	protocol_sendByte(fd, proto, proto->addr, proto->type, PROTO_ACK);
+	slave_shutdown();
+	return 0;
 }
 
 static int cmd_slave_broadcast(KFile *fd, Protocol *proto)
@@ -142,7 +136,7 @@ const Cmd slave_cmd[] = {
 	{ 0     , NULL }
 };
 
-void cmd_slavePoll(KFile *fd, Protocol *proto)
+static void cmd_slavePoll(KFile *fd, Protocol *proto)
 {
 	if (slave_status == CMD_SLAVE_STATUS_WAIT)
 	{
@@ -150,11 +144,14 @@ void cmd_slavePoll(KFile *fd, Protocol *proto)
 		return;
 	}
 
+	if (retry == CMD_MAX_RETRY)
+		slave_status = CMD_SLAVE_STATUS_SHUTDOWN;
 
-	if (((slave_status == CMD_SLAVE_STATUS_SHUTDOWN) && (
-			(rtc_time() - start_time) > CMD_TIMEOUT)) || (retry == CMD_MAX_RETRY))
+	if (slave_status == CMD_SLAVE_STATUS_SHUTDOWN)
 	{
-		slave_shutdown();
+		if ((rtc_time() - start_time) > CMD_TIMEOUT)
+			slave_shutdown();
+
 		return;
 	}
 
@@ -168,37 +165,44 @@ void cmd_slavePoll(KFile *fd, Protocol *proto)
 	retry += 1;
 }
 
-void cmd_poll(KFile *fd, Protocol *proto)
+static uint8_t monitor_int;
+static void cmd_masterPoll(KFile *fd, Protocol *proto)
 {
-	memset(proto, 0, sizeof(Protocol));
-	for (int i = 0; i < CMD_DEVICES; i++)
-	{
-		kprintf("%d: ", i);
-		if (local_dev[i].addr)
-		{
-			kprintf("Addr[%d],St[%d],time[%ld]\n", local_dev[i].addr,
-						local_dev[i].status, local_dev[i].time);
+	(void)fd;
+	(void)proto;
 
-			if ((rtc_time() - local_dev[i].time) > CMD_TIMEOUT)
+	if (monitor_int == 10)
+	{
+		monitor_int = 0;
+		for (int i = 0; i < CMD_DEVICES; i++)
+		{
+			kprintf("%d: ", i);
+			if (local_dev[i].addr)
 			{
-				int sent = protocol_send(fd, proto, local_dev[i].addr, CMD_SLEEP);
-				kprintf("Sleep sent[%d] %s[%d]\n",
-							proto->type, sent < 0 ? "Error!":"Ok", sent);
-				continue;
+				kprintf("Addr[%d]T[%ld]\n", local_dev[i].addr, local_dev[i].timestamp);
+			}
+			else
+			{
+				kprintf("Empty\n");
 			}
 		}
-		else
-		{
-			kprintf("Empty\n");
-		}
+		kputs("-----\n");
 	}
-	kputs("-----\n");
+	monitor_int += 1;
 }
 
+void cmd_poll(uint8_t id, KFile *fd, struct Protocol *proto)
+{
+	if (id == RADIO_MASTER)
+		cmd_masterPoll(fd, proto);
+	else
+		cmd_slavePoll(fd, proto);
+}
 
 void cmd_init()
 {
 	start_time = rtc_time();
+	slave_status = CMD_SLAVE_STATUS_BROADCAST;
 }
 
 
