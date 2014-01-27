@@ -67,10 +67,10 @@ static void init(void)
 	radio_init(&radio, ping_low_baud_868);
 	radio_timeout(&radio, -1);
 
+	cmd_init();
 }
 
 static Protocol proto;
-uint8_t tmp[60];
 
 int main(void)
 {
