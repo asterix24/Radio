@@ -117,7 +117,7 @@ void protocol_decode(Radio *fd, Protocol *proto)
 	kprintf("Decode data:len[%d]\n", proto->len);
 	uint8_t id = radio_cfg_id();
 	const RadioCfg *cfg = radio_cfg(id);
-	kprintf("$%d;%d;%d;", proto->addr, fd->lqi, fd->rssi);
+	kprintf("$%d;%d;%d;%ld", proto->addr, fd->lqi, fd->rssi,proto->timestamp);
 
 	size_t index = 0;
 	for (size_t j = 0; j < cfg->fmt_len; j++)
