@@ -172,6 +172,8 @@ void protocol_encode(Protocol *proto)
 	uint8_t id = radio_cfg_id();
 	const RadioCfg *cfg = radio_cfg(id);
 
+	ASSERT(cfg);
+
 	proto->timestamp = rtc_time();
 
 	kputs("$");
