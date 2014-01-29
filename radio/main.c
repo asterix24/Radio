@@ -98,7 +98,9 @@ int main(void)
 
 	while (1)
 	{
-		kprintf("%ld\n", rtc_time());
+		kprintf("%ld: ", rtc_time());
+
+		measure_ntc(0,0);
 
 		protocol_poll(&radio.fd, &proto);
 		cmd_poll(id, &radio.fd, &proto);
