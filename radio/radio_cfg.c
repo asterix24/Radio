@@ -58,7 +58,7 @@ const RadioCfg default_cfg = {
 
 RadioCfg const *radio_cfg_table[] =
 {
-	&default_cfg, // Id = 0
+	&default_cfg, // Id = 0 -> MASTER
 	&default_cfg, // Id = 1
 	&default_cfg, // Id = 2
 };
