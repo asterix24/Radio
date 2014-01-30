@@ -40,6 +40,24 @@
 #include <drv/rtc.h>
 
 #include <string.h>
+#include <math.h>
+
+#define NTC_A 1.129241E-3
+#define NTC_B 2.341077E-4
+#define NTC_C 8.775468E-8
+
+
+static uint32_t ntc_to_temp(uint16_t val)
+{
+
+    //float rntc = ;
+    //float y = NTC_A + NTC_B * logf(rntc) + NTC_C * powf(logf(rntc), 3);
+	//((1 / y - 273.15) * 1000)
+	uint32_t rntc = ((val * 10000.0) / (4096.0 - val)) * 1000;
+
+	//kprintf("r[%f]\n", rntc);
+    return (uint32_t)rntc;
+}
 
 int measure_intTemp(uint8_t *data, size_t len)
 {
@@ -59,29 +77,13 @@ int measure_intVref(uint8_t *data, size_t len)
 	return 0;
 }
 
+
 int measure_ntc(uint8_t *data, size_t len)
 {
 	(void)data;
 	(void)len;
-	uint32_t v_blk = adc_read(0);
-	uint32_t v_rame = adc_read(1);
 
-	float r_blk = (float)(10000 * v_blk) / (float)(4096 - v_blk);
-	float r_rame = (float)(10000 * v_rame) / (float)(4096 - v_rame);
-
-	uint32_t rb = r_blk * 1000;
-	uint32_t rr = r_rame * 1000;
-
-#if 0
-	//uint32_t vn_blk = 10000000000 * v_blk;
-	uint32_t rb = v_blk * (1/(4096 - v_blk)) * 10000;
-
-	uint32_t vn_rame = 100000000000 * v_rame;
-	uint32_t vd_rame = (4096 - v_rame) * 1000;
-	uint32_t rr = vn_rame / vd_rame;
-#endif
-
-	kprintf("%ld %ld\n", rb, rr);
+	kprintf("%ld %ld\n", ntc_to_temp(adc_read(0)), ntc_to_temp(adc_read(1)));
 
 	return 0;
 }
