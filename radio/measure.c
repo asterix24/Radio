@@ -39,25 +39,67 @@
 #include <drv/clock_stm32.h>
 #include <drv/rtc.h>
 
+#include <algo/table.h>
+
 #include <string.h>
-#include <math.h>
 
-#define NTC_A 1.129241E-3
-#define NTC_B 2.341077E-4
-#define NTC_C 8.775468E-8
+static const Table t[] = {
+	{ 100   ,  137212 },
+	{ 200   ,  109753 },
+	{ 300   ,  94853 },
+	{ 400   ,  84653 },
+	{ 500   ,  76888 },
+	{ 600   ,  70599 },
+	{ 700   ,  65291 },
+	{ 800   ,  60679 },
+	{ 900   ,  56584 },
+	{ 1000  ,  52883 },
+	{ 1100  ,  49492 },
+	{ 1200  ,  46348 },
+	{ 1300  ,  43405 },
+	{ 1400  ,  40626 },
+	{ 1500  ,  37982 },
+	{ 1600  ,  35449 },
+	{ 1700  ,  33008 },
+	{ 1800  ,  30641 },
+	{ 1900  ,  28333 },
+	{ 2000  ,  26073 },
+	{ 2100  ,  23847 },
+	{ 2200  ,  21644 },
+	{ 2300  ,  19454 },
+	{ 2400  ,  17266 },
+	{ 2500  ,  15068 },
+	{ 2600  ,  12850 },
+	{ 2700  ,  10599 },
+	{ 2800  ,  8300 },
+	{ 2900  ,  5937 },
+	{ 3000  ,  3492 },
+	{ 3100  ,  941 },
+	{ 3200  ,  -1747 },
+	{ 3300  ,  -4610 },
+	{ 3400  ,  -7702 },
+	{ 3500  ,  -11100 },
+	{ 3600  ,  -14919 },
+	{ 3700  ,  -19353 },
+	{ 3800  ,  -24752 },
+	{ 3900  ,  -31893 },
+	{ 4000  ,  -43198 },
+};
 
-
+/*
 static uint32_t ntc_to_temp(uint16_t val)
 {
 
     //float rntc = ;
     //float y = NTC_A + NTC_B * logf(rntc) + NTC_C * powf(logf(rntc), 3);
 	//((1 / y - 273.15) * 1000)
-	uint32_t rntc = ((val * 10000.0) / (4096.0 - val)) * 1000;
+	//uint32_t rntc = ((val * 10000.0) / (4096.0 - val)) * 1000;
 
 	//kprintf("r[%f]\n", rntc);
+	
     return (uint32_t)rntc;
 }
+*/
 
 int measure_intTemp(uint8_t *data, size_t len)
 {
@@ -83,7 +125,10 @@ int measure_ntc(uint8_t *data, size_t len)
 	(void)data;
 	(void)len;
 
-	kprintf("%ld %ld\n", ntc_to_temp(adc_read(0)), ntc_to_temp(adc_read(1)));
+	int blk = table_linearInterpolation(t, countof(t), adc_read(0));
+	int rame = table_linearInterpolation(t, countof(t), adc_read(1));
+
+	kprintf("%d %d\n", blk, rame);
 
 	return 0;
 }
