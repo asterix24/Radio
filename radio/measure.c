@@ -86,21 +86,6 @@ static const Table t[] = {
 	{ 4000  ,  -43198 },
 };
 
-/*
-static uint32_t ntc_to_temp(uint16_t val)
-{
-
-    //float rntc = ;
-    //float y = NTC_A + NTC_B * logf(rntc) + NTC_C * powf(logf(rntc), 3);
-	//((1 / y - 273.15) * 1000)
-	//uint32_t rntc = ((val * 10000.0) / (4096.0 - val)) * 1000;
-
-	//kprintf("r[%f]\n", rntc);
-	
-    return (uint32_t)rntc;
-}
-*/
-
 int measure_intTemp(uint8_t *data, size_t len)
 {
 	ASSERT(len >= sizeof(uint16_t));
@@ -119,16 +104,20 @@ int measure_intVref(uint8_t *data, size_t len)
 	return 0;
 }
 
-
-int measure_ntc(uint8_t *data, size_t len)
+int measure_ntc0(uint8_t *data, size_t len)
 {
-	(void)data;
-	(void)len;
+	ASSERT(len >= sizeof(int32_t));
+	int v = table_linearInterpolation(t, countof(t), adc_read(0));
+	memcpy(data, &v, sizeof(int32_t));
 
-	int blk = table_linearInterpolation(t, countof(t), adc_read(0));
-	int rame = table_linearInterpolation(t, countof(t), adc_read(1));
+	return 0;
+}
 
-	kprintf("%d %d\n", blk, rame);
+int measure_ntc1(uint8_t *data, size_t len)
+{
+	ASSERT(len >= sizeof(int32_t));
+	int v = table_linearInterpolation(t, countof(t), adc_read(1));
+	memcpy(data, &v, sizeof(int32_t));
 
 	return 0;
 }

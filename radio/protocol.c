@@ -122,7 +122,6 @@ int protocol_poll(KFile *fd, Protocol *proto)
 	return PROTO_ERR;
 }
 
-
 void protocol_decode(Radio *fd, Protocol *proto)
 {
 	LOG_INFO("Decode len[%d]\n", proto->len);
@@ -162,6 +161,15 @@ void protocol_decode(Radio *fd, Protocol *proto)
 			kprintf("%ld;", d);
 			index += sizeof(uint32_t);
 		}
+		/* 'i': 4 byte unsigned */
+		if (cfg->fmt[j] == 'i')
+		{
+			ASSERT(index <= proto->len);
+			int32_t d;
+			memcpy(&d, &proto->data[index], sizeof(d));
+			kprintf("%ld;", d);
+			index += sizeof(d);
+		}
 	}
 	kputs("\n");
 }
@@ -176,7 +184,6 @@ void protocol_encode(Protocol *proto)
 
 	proto->timestamp = rtc_time();
 
-	kputs("$");
 	size_t index = 0;
 	for (size_t i = 0; i < cfg->fmt_len; i++)
 	{
@@ -203,6 +210,18 @@ void protocol_encode(Protocol *proto)
 			index += sizeof(d);
 			proto->len += sizeof(d);
 			kprintf("%d;", d);
+		}
+		if (cfg->fmt[i] == 'i')
+		{
+			int32_t d;
+			ASSERT(cfg->callbacks[i]);
+			ASSERT(index < PROTO_DATALEN);
+
+			cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
+			memcpy(&proto->data[index], (uint8_t *)&d, sizeof(d));
+			index += sizeof(d);
+			proto->len += sizeof(d);
+			kprintf("%ld;", d);
 		}
 		if (cfg->fmt[i] == 'I')
 		{

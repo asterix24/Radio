@@ -56,14 +56,24 @@ const RadioCfg default_cfg = {
 	},
 };
 
+const RadioCfg module_cfg = {
+	"hHii", sizeof("hHii"),
+	{
+		measure_intTemp,
+		measure_intVref,
+		measure_ntc0,
+		measure_ntc1,
+		NULL,
+	},
+};
+
 RadioCfg const *radio_cfg_table[] =
 {
-	&default_cfg, // Id = 0 -> MASTER
-	&default_cfg, // Id = 1
+	&module_cfg, // Id = 0 -> MASTER
+	&module_cfg, // Id = 1
 	&default_cfg, // Id = 2
 	&default_cfg, // Id = 3
 };
-
 
 /*
  * Get the device id
