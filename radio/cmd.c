@@ -42,37 +42,16 @@
 
 #include <string.h>
 
-static Devices local_dev[CMD_DEVICES];
-
 static int cmd_master_broadcast(KFile *_fd, Protocol *proto)
 {
-	uint8_t reply = PROTO_NACK;
-	for (int i = 0; i < CMD_DEVICES; i++)
-	{
-		if (local_dev[i].addr == proto->addr)
-		{
-			local_dev[i].timestamp = proto->timestamp;
-			reply = PROTO_ACK;
-			break;
-		}
-		else if (!local_dev[i].addr)
-		{
-			local_dev[i].addr =  proto->addr;
-			local_dev[i].local_timestamp = rtc_time();
-			local_dev[i].timestamp = proto->timestamp;
-			reply = PROTO_ACK;
-			break;
-		}
-	}
 
-	LOG_INFO("Broadcast: type[%d]addr[%d]reply[%d]\n",
-							proto->type, proto->addr, reply);
-
+	LOG_INFO("Broadcast: type[%d]addr[%d]\n",
+								proto->type, proto->addr);
 
 	Radio *fd = RADIO_CAST(_fd);
 	protocol_decode(fd, proto);
 
-	return protocol_sendByte(_fd, proto, proto->addr, proto->type, reply);
+	return protocol_sendByte(_fd, proto, proto->addr, proto->type, PROTO_ACK);
 }
 
 
@@ -164,40 +143,22 @@ static void cmd_slavePoll(KFile *fd, Protocol *proto)
 	retry += 1;
 }
 
-static uint8_t monitor_int;
-static void cmd_masterPoll(KFile *fd, Protocol *proto)
-{
-	(void)fd;
-	(void)proto;
-
-	if (monitor_int == 10)
-	{
-		monitor_int = 0;
-		kputs("-----\n");
-		for (int i = 0; i < CMD_DEVICES; i++)
-		{
-			kprintf("%d: ", i);
-			if (local_dev[i].addr)
-			{
-				kprintf("Addr[%d]LT[%ld]T[%ld]\n", local_dev[i].addr,
-						local_dev[i].local_timestamp, local_dev[i].timestamp);
-			}
-			else
-			{
-				kprintf("Empty\n");
-			}
-		}
-		kputs("-----\n");
-	}
-	monitor_int += 1;
-}
-
 void cmd_poll(uint8_t id, KFile *fd, struct Protocol *proto)
 {
 	if (id == RADIO_MASTER)
-		cmd_masterPoll(fd, proto);
+	{
+		if ((rtc_time() - start_time) > (CMD_TIMEOUT + CMD_WAKEUP_TIME))
+		{
+			memset(proto, 0, sizeof(Protocol));
+			kprintf("$0;0;0;%ld;", rtc_time());
+			protocol_encode(proto);
+			start_time = rtc_time();
+		}
+	}
 	else
+	{
 		cmd_slavePoll(fd, proto);
+	}
 }
 
 void cmd_init()
