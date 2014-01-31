@@ -86,21 +86,14 @@ int main(void)
 						? "MASTER" : "SLAVE", id);
 
 	if (id == RADIO_MASTER)
-	{
 		protocol_init(master_cmd);
-		radio_timeout(&radio, 1000);
-	}
 	else
-	{
 		protocol_init(slave_cmd);
-		radio_timeout(&radio, 5000);
-	}
 
+	radio_timeout(&radio, 1000);
 	while (1)
 	{
-		kprintf("%ld: ", rtc_time());
-
-		measure_ntc(0,0);
+		//kprintf("%ld\n", rtc_time());
 
 		protocol_poll(&radio.fd, &proto);
 		cmd_poll(id, &radio.fd, &proto);
