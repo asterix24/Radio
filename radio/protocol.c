@@ -122,11 +122,21 @@ int protocol_poll(KFile *fd, Protocol *proto)
 	return PROTO_ERR;
 }
 
+
+#define DECODE(T, len, fmt) \
+	do { \
+		T tmp; \
+		(len) = sizeof(T); \
+		memcpy(&tmp, &proto->data[index], len); \
+		kprintf("%d;", tmp); \
+	} while (0)
+
 void protocol_decode(Radio *fd, Protocol *proto)
 {
 	LOG_INFO("Decode len[%d]\n", proto->len);
 	uint8_t id = radio_cfg_id();
 	const RadioCfg *cfg = radio_cfg(id);
+
 	kprintf("$%d;%d;%d;%ld;", proto->addr, fd->lqi, fd->rssi, proto->timestamp);
 
 	size_t index = 0;
@@ -135,46 +145,32 @@ void protocol_decode(Radio *fd, Protocol *proto)
 		if (index > proto->len)
 			break;
 
-		/* 'h': 2 byte signed */
+		size_t len = 0;
+
 		if (cfg->fmt[j] == 'h')
-		{
-			int16_t d;
-			memcpy(&d, &proto->data[index], sizeof(int16_t));
-			kprintf("%d;", d);
-			index += sizeof(int16_t);
-		}
-		/* 'H': 2 byte unsigned */
-		if (cfg->fmt[j] == 'H')
-		{
-			ASSERT(index <= proto->len);
-			uint16_t d;
-			memcpy(&d, &proto->data[index], sizeof(uint16_t));
-			kprintf("%d;", d);
-			index += sizeof(uint16_t);
-		}
-		/* 'I': 4 byte unsigned */
-		if (cfg->fmt[j] == 'I')
-		{
-			ASSERT(index <= proto->len);
-			uint32_t d;
-			memcpy(&d, &proto->data[index], sizeof(uint32_t));
-			kprintf("%ld;", d);
-			index += sizeof(uint32_t);
-		}
-		/* 'i': 4 byte unsigned */
-		if (cfg->fmt[j] == 'i')
-		{
-			ASSERT(index <= proto->len);
-			int32_t d;
-			memcpy(&d, &proto->data[index], sizeof(d));
-			kprintf("%ld;", d);
-			index += sizeof(d);
-		}
+			DECODE(int16_t, len, "%d;");
+		else if (cfg->fmt[j] == 'H')
+			DECODE(uint16_t, len, "%d;");
+		else if (cfg->fmt[j] == 'I')
+			DECODE(uint16_t, len, "%d;");
+		else if (cfg->fmt[j] == 'i')
+			DECODE(uint16_t, len, "%d;");
+
+		index += len;
 	}
 	kputs("\n");
 }
 
-void protocol_encode(Protocol *proto)
+#define ENCODE(T, len, fmt) \
+	do { \
+		T tmp; \
+		(len) = sizeof(T); \
+		cfg->callbacks[i]((uint8_t *)&tmp, (len)); \
+		memcpy(&proto->data[index], (uint8_t *)&tmp,(len)); \
+		kprintf(fmt, tmp); \
+	} while (0)
+
+void protocol_encode(Radio *fd, Protocol *proto)
 {
 	LOG_INFO("Encode data\n");
 	uint8_t id = radio_cfg_id();
@@ -183,59 +179,29 @@ void protocol_encode(Protocol *proto)
 	ASSERT(cfg);
 
 	proto->timestamp = rtc_time();
+	kprintf("$%d;%d;%d;%ld;", id, fd->lqi, fd->rssi, proto->timestamp);
 
 	size_t index = 0;
 	for (size_t i = 0; i < cfg->fmt_len; i++)
 	{
+		ASSERT(cfg->callbacks[i]);
+		ASSERT(index < PROTO_DATALEN);
+
+		size_t len = 0;
+
 		if (cfg->fmt[i] == 'h')
-		{
-			int16_t d;
-			ASSERT(cfg->callbacks[i]);
-			ASSERT(index < PROTO_DATALEN);
+			ENCODE(int16_t, len, "%d;");   /* 'h': 2 byte signed */
+		else if (cfg->fmt[i] == 'H')
+			ENCODE(uint16_t, len, "%d;");   /* 'H': 2 byte unsigned */
+		else if (cfg->fmt[i] == 'i')
+			ENCODE(int32_t, len, "%ld;");   /* 'I': 4 byte unsigned */
+		else if (cfg->fmt[i] == 'I')
+			ENCODE(uint32_t, len, "%ld;");  /* 'i': 4 byte unsigned */
 
-			cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
-			memcpy(&proto->data[index], (uint8_t *)&d, sizeof(d));
-			index += sizeof(d);
-			proto->len += sizeof(d);
-			kprintf("%d;", d);
-		}
-		if (cfg->fmt[i] == 'H')
-		{
-			uint16_t d;
-			ASSERT(cfg->callbacks[i]);
-			ASSERT(index < PROTO_DATALEN);
-
-			cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
-			memcpy(&proto->data[index], (uint8_t *)&d, sizeof(d));
-			index += sizeof(d);
-			proto->len += sizeof(d);
-			kprintf("%d;", d);
-		}
-		if (cfg->fmt[i] == 'i')
-		{
-			int32_t d;
-			ASSERT(cfg->callbacks[i]);
-			ASSERT(index < PROTO_DATALEN);
-
-			cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
-			memcpy(&proto->data[index], (uint8_t *)&d, sizeof(d));
-			index += sizeof(d);
-			proto->len += sizeof(d);
-			kprintf("%ld;", d);
-		}
-		if (cfg->fmt[i] == 'I')
-		{
-			uint32_t d;
-			ASSERT(cfg->callbacks[i]);
-			ASSERT(index < PROTO_DATALEN);
-
-			cfg->callbacks[i]((uint8_t *)&d, sizeof(d));
-			memcpy(&proto->data[index], (uint8_t *)&d, sizeof(d));
-			index += sizeof(d);
-			proto->len += sizeof(d);
-			kprintf("%ld;", d);
-		}
+		index += len;
+		proto->len += len;
 	}
+
 	kputs("\n");
 }
 

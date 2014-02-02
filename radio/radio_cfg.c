@@ -48,22 +48,20 @@
                     RADIO_CFG_ID3)
 
 const RadioCfg default_cfg = {
-	"hH", sizeof("hH"),
+	"hH", 2,
 	{
 		measure_intTemp,
 		measure_intVref,
-		NULL,
 	},
 };
 
 const RadioCfg module_cfg = {
-	"hHii", sizeof("hHii"),
+	"hHii", 4,
 	{
 		measure_intTemp,
 		measure_intVref,
 		measure_ntc0,
 		measure_ntc1,
-		NULL,
 	},
 };
 

@@ -75,7 +75,7 @@ int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type);
 int protocol_sendByte(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, uint8_t data);
 int protocol_sendBuf(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, const uint8_t *data, size_t len);
 void protocol_decode(Radio *fd, Protocol *proto);
-void protocol_encode(Protocol *proto);
+void protocol_encode(Radio *fd, Protocol *proto);
 int protocol_poll(KFile *fd, Protocol *proto);
 void protocol_init(const Cmd *table);
 

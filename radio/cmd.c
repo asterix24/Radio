@@ -114,7 +114,7 @@ const Cmd slave_cmd[] = {
 	{ 0     , NULL }
 };
 
-static void cmd_slavePoll(KFile *fd, Protocol *proto)
+static void cmd_slavePoll(KFile *_fd, Protocol *proto)
 {
 	if (slave_status == CMD_SLAVE_STATUS_WAIT)
 	{
@@ -134,8 +134,9 @@ static void cmd_slavePoll(KFile *fd, Protocol *proto)
 	}
 
 	memset(proto, 0, sizeof(Protocol));
-	protocol_encode(proto);
-	int sent = protocol_send(fd, proto, radio_cfg_id(), CMD_BROADCAST);
+	Radio *fd = RADIO_CAST(_fd);
+	protocol_encode(fd, proto);
+	int sent = protocol_send(_fd, proto, radio_cfg_id(), CMD_BROADCAST);
 
 	LOG_INFO("Broadcast sent[%d] %s[%d]\n",
 				proto->type, sent < 0 ? "Error!":"Ok", sent);
@@ -143,21 +144,21 @@ static void cmd_slavePoll(KFile *fd, Protocol *proto)
 	retry += 1;
 }
 
-void cmd_poll(uint8_t id, KFile *fd, struct Protocol *proto)
+void cmd_poll(uint8_t id, KFile *_fd, struct Protocol *proto)
 {
 	if (id == RADIO_MASTER)
 	{
 		if ((rtc_time() - start_time) > (CMD_TIMEOUT + CMD_WAKEUP_TIME))
 		{
 			memset(proto, 0, sizeof(Protocol));
-			kprintf("$0;0;0;%ld;", rtc_time());
-			protocol_encode(proto);
+			Radio *fd = RADIO_CAST(_fd);
+			protocol_encode(fd, proto);
 			start_time = rtc_time();
 		}
 	}
 	else
 	{
-		cmd_slavePoll(fd, proto);
+		cmd_slavePoll(_fd, proto);
 	}
 }
 
