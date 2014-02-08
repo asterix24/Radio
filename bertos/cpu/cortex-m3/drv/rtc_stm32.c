@@ -104,6 +104,7 @@ void rtc_setAlarm(rtc_clock_t val)
 /* Initialize the RTC clock */
 int rtc_init(void)
 {
+	uint32_t val = rtc_time();
 #if CONFIG_KERN
 	MOD_CHECK(proc);
 #endif
@@ -154,6 +155,8 @@ int rtc_init(void)
 
 	/* Disable access to the RTC registers */
 	PWR->CR &= ~PWR_CR_DBP;
+
+	rtc_setTime(val);
 
 	return 0;
 }
