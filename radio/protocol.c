@@ -128,12 +128,12 @@ int protocol_poll(KFile *fd, Protocol *proto)
 		T tmp; \
 		(len) = sizeof(T); \
 		memcpy(&tmp, &proto->data[index], len); \
-		kprintf("%d;", tmp); \
+		kprintf((fmt), tmp); \
 	} while (0)
 
 void protocol_decode(Radio *fd, Protocol *proto)
 {
-	LOG_WARN("Decode len[%d]\n", proto->len);
+	LOG_INFO("Decode len[%d]\n", proto->len);
 	uint8_t id = radio_cfg_id();
 	const RadioCfg *cfg = radio_cfg(id);
 
@@ -167,7 +167,7 @@ void protocol_decode(Radio *fd, Protocol *proto)
 		(len) = sizeof(T); \
 		cfg->callbacks[i]((uint8_t *)&tmp, (len)); \
 		memcpy(&proto->data[index], (uint8_t *)&tmp,(len)); \
-		kprintf(fmt, tmp); \
+		kprintf((fmt), tmp); \
 	} while (0)
 
 void protocol_encode(Radio *fd, Protocol *proto)
