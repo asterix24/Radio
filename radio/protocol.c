@@ -142,7 +142,7 @@ void protocol_decode(Radio *fd, Protocol *proto)
 	size_t index = 0;
 	for (size_t j = 0; j < cfg->fmt_len; j++)
 	{
-		if (index > proto->len)
+		if (index >= proto->len)
 			break;
 
 		size_t len = 0;
