@@ -20,7 +20,6 @@ radio_USER_CSRC = \
 	$(radio_SRC_PATH)/protocol.c \
 	$(radio_SRC_PATH)/cmd.c \
 	$(radio_SRC_PATH)/measure.c \
-	$(radio_SRC_PATH)/iwdg.c \
 	#
 
 # Files included by the user.

@@ -26,8 +26,9 @@
  */
 
 #include "protocol.h"
-#include "iwdg.h"
 #include "radio_cfg.h"
+
+#include "hw/hw_pwr.h"
 
 #include <cfg/debug.h>
 
