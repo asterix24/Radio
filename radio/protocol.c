@@ -133,7 +133,7 @@ int protocol_poll(KFile *fd, Protocol *proto)
 
 void protocol_decode(Radio *fd, Protocol *proto)
 {
-	LOG_INFO("Decode len[%d]\n", proto->len);
+	LOG_WARN("Decode len[%d]\n", proto->len);
 	uint8_t id = radio_cfg_id();
 	const RadioCfg *cfg = radio_cfg(id);
 
@@ -142,7 +142,7 @@ void protocol_decode(Radio *fd, Protocol *proto)
 	size_t index = 0;
 	for (size_t j = 0; j < cfg->fmt_len; j++)
 	{
-		if (index >= proto->len)
+		if (index > proto->len)
 			break;
 
 		size_t len = 0;
@@ -152,9 +152,9 @@ void protocol_decode(Radio *fd, Protocol *proto)
 		else if (cfg->fmt[j] == 'H')
 			DECODE(uint16_t, len, "%d;");
 		else if (cfg->fmt[j] == 'I')
-			DECODE(uint16_t, len, "%d;");
+			DECODE(int32_t, len, "%ld;");
 		else if (cfg->fmt[j] == 'i')
-			DECODE(uint16_t, len, "%d;");
+			DECODE(uint32_t, len, "%ld;");
 
 		index += len;
 	}
@@ -172,14 +172,17 @@ void protocol_decode(Radio *fd, Protocol *proto)
 
 void protocol_encode(Radio *fd, Protocol *proto)
 {
+	(void)fd;
 	LOG_INFO("Encode data\n");
 	uint8_t id = radio_cfg_id();
 	const RadioCfg *cfg = radio_cfg(id);
 
 	ASSERT(cfg);
 
+	memset(proto, 0, sizeof(Protocol));
+
 	proto->timestamp = rtc_time();
-	kprintf("$%d;%d;%d;%ld;", id, fd->lqi, fd->rssi, proto->timestamp);
+	kprintf("$%d;0;0;%ld;", id, proto->timestamp);
 
 	size_t index = 0;
 	for (size_t i = 0; i < cfg->fmt_len; i++)
