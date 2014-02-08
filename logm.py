@@ -3,9 +3,10 @@
 import serial
 import sys
 
+PORT="/dev/tty.usbserial-FTG6PM4N"
 try:
     s = serial.Serial(
-        port='/dev/tty.usbserial-FTG6Q56R',
+        port=PORT,
         baudrate=115200,     # baudrate
         bytesize=8,             # number of databits
         parity=serial.PARITY_NONE,
@@ -17,9 +18,16 @@ try:
 
     s.setDTR(0) #disabilito reset
     s.setRTS(1) #disabilito boot0
+    o = open('uno', 'w')
     while 1:
-        sys.stdout.write(s.read())
+        line = s.readline()
+        if "$" in line:
+            o.write(line)
+        o.flush()
+
+        sys.stdout.write(line)
 except KeyboardInterrupt:
     print 'Close serial'
     s.flush()
     s.close()
+    o.close()
