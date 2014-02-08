@@ -134,7 +134,6 @@ static void cmd_slavePoll(KFile *_fd, Protocol *proto)
 		return;
 	}
 
-	memset(proto, 0, sizeof(Protocol));
 	Radio *fd = RADIO_CAST(_fd);
 	protocol_encode(fd, proto);
 	int sent = protocol_send(_fd, proto, radio_cfg_id(), CMD_BROADCAST);
@@ -151,7 +150,6 @@ void cmd_poll(uint8_t id, KFile *_fd, struct Protocol *proto)
 	{
 		if ((rtc_time() - start_time) > (CMD_TIMEOUT + CMD_WAKEUP_TIME))
 		{
-			memset(proto, 0, sizeof(Protocol));
 			Radio *fd = RADIO_CAST(_fd);
 			protocol_encode(fd, proto);
 			start_time = rtc_time();

@@ -57,7 +57,7 @@
  * Settings
  */
 #define CMD_DEVICES                  5
-#define CMD_TIMEOUT                 60 //s
+#define CMD_TIMEOUT                 30 //s
 #define CMD_WAKEUP_TIME             60 //s
 #define CMD_MAX_RETRY                3
 
