@@ -115,6 +115,8 @@ const Cmd slave_cmd[] = {
 	{ 0     , NULL }
 };
 
+static uint16_t resend_time[] = { CMD_TIMEOUT / 3, CMD_TIMEOUT / 2, CMD_TIMEOUT - 1};
+
 static void cmd_slavePoll(KFile *_fd, Protocol *proto)
 {
 	if (slave_status == CMD_SLAVE_STATUS_WAIT)
@@ -123,25 +125,24 @@ static void cmd_slavePoll(KFile *_fd, Protocol *proto)
 		return;
 	}
 
-	if (retry == CMD_MAX_RETRY)
-		slave_status = CMD_SLAVE_STATUS_SHUTDOWN;
-
-	if (slave_status == CMD_SLAVE_STATUS_SHUTDOWN)
+	if ((slave_status == CMD_SLAVE_STATUS_SHUTDOWN) || (retry == CMD_MAX_RETRY))
 	{
-		if ((rtc_time() - start_time) > CMD_TIMEOUT)
-			slave_shutdown();
-
+		slave_shutdown();
 		return;
 	}
 
-	Radio *fd = RADIO_CAST(_fd);
-	protocol_encode(fd, proto);
-	int sent = protocol_send(_fd, proto, radio_cfg_id(), CMD_BROADCAST);
+	if ((rtc_time() - start_time) > resend_time[retry])
+	{
 
-	LOG_INFO("Broadcast sent[%d] %s[%d]\n",
-				proto->type, sent < 0 ? "Error!":"Ok", sent);
+		Radio *fd = RADIO_CAST(_fd);
+		protocol_encode(fd, proto);
+		int sent = protocol_send(_fd, proto, radio_cfg_id(), CMD_BROADCAST);
 
-	retry += 1;
+		LOG_INFO("Broadcast sent[%d] %s[%d] time[%d]\n",
+					proto->type, sent < 0 ? "Error!":"Ok", sent, resend_time[retry]);
+
+		retry += 1;
+	}
 }
 
 void cmd_poll(uint8_t id, KFile *_fd, struct Protocol *proto)
