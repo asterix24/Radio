@@ -41,7 +41,7 @@ static struct stm32_pwr *PWR = (struct stm32_pwr *)PWR_BASE;
 static struct stm32_gpio *GPIOA = (struct stm32_gpio *)GPIOA_BASE;
 static struct stm32_gpio *GPIOB = (struct stm32_gpio *)GPIOB_BASE;
 
-void go_standby(void)
+INLINE void go_standby(void)
 {
 	PWR->CSR = 0;
 	/* Shut down all clocks. */

@@ -30,7 +30,6 @@
 #include "protocol.h"
 #include "cmd.h"
 #include "measure.h"
-#include "iwdg.h"
 
 #include "hw/hw_cc1101.h"
 #include "hw/hw_adc.h"
