@@ -36,6 +36,12 @@
 
 #include <cfg/debug.h>
 
+// Define logging setting (for cfg/log.h module).
+#define LOG_LEVEL   3
+#define LOG_FORMAT  0
+
+#include <cfg/log.h>
+
 #include <io/kfile.h>
 
 #include <cpu/irq.h>
@@ -45,6 +51,7 @@
 #include <drv/timer.h>
 #include <drv/adc.h>
 #include <drv/spi.h>
+#include <drv/rtc.h>
 
 #include <string.h>
 
@@ -56,48 +63,41 @@ static void init(void)
 	IRQ_ENABLE;
 	kdbg_init();
 	timer_init();
+	rtc_init();
 
 	spi_init();
 	adc_init();
+
 
 	radio_cfg_init();
 	radio_init(&radio, ping_low_baud_868);
 	radio_timeout(&radio, -1);
 
+	cmd_init();
 }
 
+static Protocol proto;
 
 int main(void)
 {
 	init();
 	/* Send first broadcast message with us configuration */
 	uint8_t id = radio_cfg_id();
-	kprintf("%s [%d]\n", id == RADIO_MASTER ? "MASTER" : "SLAVE", id);
+	LOG_INFO("%s [%d]\n", id == RADIO_MASTER
+						? "MASTER" : "SLAVE", id);
 
 	if (id == RADIO_MASTER)
-	{
 		protocol_init(master_cmd);
-		radio_timeout(&radio, 1000);
-		while (1)
-		{
-			//kputs("Ready:\n");
-			protocol_poll(&radio.fd, &proto);
-			cmd_poll(&radio.fd, &proto);
-		}
-	}
 	else
-	{
 		protocol_init(slave_cmd);
 
-		int sent = protocol_broadcast(&radio.fd, &proto, id, cfg->fmt, cfg->fmt_len);
-		kprintf("Sent broadcast[%d]\n", sent);
+	radio_timeout(&radio, 500);
+	while (1)
+	{
+		//kprintf("%ld\n", rtc_time());
 
-		while (1)
-		{
-			radio_timeout(&radio, 5000);
-			protocol_poll(&radio.fd, &proto);
-			cmd_slavePoll(&radio.fd, &proto);
-		}
+		protocol_poll(&radio.fd, &proto);
+		cmd_poll(id, &radio.fd, &proto);
 	}
 
 	return 0;

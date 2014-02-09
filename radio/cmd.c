@@ -28,156 +28,147 @@
 #include "protocol.h"
 #include "radio_cfg.h"
 
+#include "hw/hw_pwr.h"
+
 #include <cfg/debug.h>
 
+// Define logging setting (for cfg/log.h module).
+#define LOG_LEVEL   3
+#define LOG_FORMAT  0
+
+#include <cfg/log.h>
+
 #include <drv/timer.h>
+#include <drv/rtc.h>
 
 #include <string.h>
 
-static Devices local_dev[CMD_DEVICES];
-static uint8_t slave_status;
-
-static int cmd_master_broadcast(KFile *fd, Protocol *proto)
+static int cmd_master_broadcast(KFile *_fd, Protocol *proto)
 {
-	kprintf("Broadcast: ");
-	uint8_t reply = PROTO_ACK;
-	for (int i = 0; i < CMD_DEVICES; i++)
-	{
-		if (local_dev[i].addr == proto->addr)
-		{
-			break;
-		}
-		else if (!local_dev[i].addr)
-		{
-			local_dev[i].addr =  proto->addr;
-			local_dev[i].status = CMD_NEW_DEV;
-			local_dev[i].timeout = timer_clock();
-			break;
-		}
-		else
-		{
-			reply = PROTO_NACK;
-		}
-	}
 
-	//proto->data[proto->len] = '\0';
-	kprintf("type[%d], addr[%d], data[%s]->", proto->type, proto->addr, proto->data);
-	kprintf("reply[%d]\n", reply);
+	LOG_INFO("Broadcast: type[%d]addr[%d]\n",
+								proto->type, proto->addr);
 
-	return protocol_sendByte(fd, proto, proto->addr, proto->type, reply);
-}
-
-static int cmd_master_data(KFile *_fd, Protocol *proto)
-{
-	kprintf("Data\n");
 	Radio *fd = RADIO_CAST(_fd);
 	protocol_decode(fd, proto);
+
+	return protocol_sendByte(_fd, proto, proto->addr, proto->type, PROTO_ACK);
+}
+
+
+static int cmd_master_sleep(KFile *fd, Protocol *proto)
+{
+	(void)fd;
+	(void)proto;
+	LOG_INFO("Sleep: type[%d]addr[%d]\n",
+							proto->type, proto->addr);
 	return 0;
 }
 
 const Cmd master_cmd[] = {
-	{ CMD_TYPE_BROADCAST, cmd_master_broadcast     },
-	{ CMD_TYPE_DATA, cmd_master_data      },
+	{ CMD_BROADCAST, cmd_master_broadcast },
+	{ CMD_SLEEP,     cmd_master_sleep     },
 	{ 0   , NULL }
 };
 
+static uint8_t slave_status;
+static uint8_t retry;
+static int elapse_time;
 
-/*
- * SLAVE COMMAND FUNCTIONS
- */
-
-
-static int cmd_slave_data(KFile *_fd, Protocol *proto)
+static void slave_shutdown(void)
 {
-	(void)fd;
-	kprintf("Master broadcast->reply[%s]\n", proto->data[0] == PROTO_ACK ? "ACK" : "NACK");
-	slave_status = CMD_SLAVE_STATUS_WAIT;
+	uint32_t wup = rtc_time() + (uint32_t)CMD_TIME_TO_WAKEUP;
+	LOG_INFO("Go Standby, wakeup to %lds\n", wup);
+	rtc_setAlarm(wup);
+	go_standby();
+}
+
+static int cmd_slave_sleep(KFile *fd, Protocol *proto)
+{
+	LOG_INFO("Sleep: type[%d]addr[%d]\n",
+							proto->type, proto->addr);
+
+	protocol_sendByte(fd, proto, proto->addr, proto->type, PROTO_ACK);
+	slave_shutdown();
 	return 0;
 }
 
-static int cmd_slave_broadcast(KFile *_fd, Protocol *proto)
+static int cmd_slave_broadcast(KFile *fd, Protocol *proto)
 {
-	slave_status = CMD_SLAVE_STATUS_SHUTDOWN;
+	(void)fd;
+	if (proto->data[0] == PROTO_ACK)
+	{
+		slave_status = CMD_SLAVE_STATUS_SHUTDOWN;
+		LOG_INFO("Broadcast ACK\n");
+		LOG_INFO("Status Shutdown\n");
+	}
+	else
+		LOG_INFO("Broadcast NACK\n");
 
-	kprintf("type[%d], addr[%d], data[%s]\n", proto->type, proto->addr, proto->data);
-	kprintf("Send data:");
-	memset(proto, 0, sizeof(Protocol));
-	protocol_encode(proto);
-	kprintf("type[%d], addr[%d]\n", proto->type, proto->addr);
-
-	return protocol_send(fd, proto, radio_cfg_id(), CMD_DATA);
+	return 0;
 }
 
+
 const Cmd slave_cmd[] = {
-	{ CMD_TYPE_BROADCAST,     cmd_slave_broadcast    }, /* Check reply from master    */
-	{ CMD_TYPE_DATA, cmd_slave_data }, /* Send all measure to master */
+	{ CMD_BROADCAST, cmd_slave_broadcast },
+	{ CMD_SLEEP,     cmd_slave_sleep      },
 	{ 0     , NULL }
 };
 
-void cmd_slavePoll(KFile *fd, Protocol *proto)
+static uint16_t resend_time[] = { CMD_TIME_TO_STANDBY - 1, CMD_TIME_TO_STANDBY / 2, CMD_TIME_TO_STANDBY / 3 };
+
+static void cmd_slavePoll(KFile *_fd, Protocol *proto)
 {
-	if (slave_status == CMD_SLAVE_STATUS_WAIT)
+	int time = elapse_time - rtc_time();
+
+	// Time elapsed, we shutdown
+	if ((time < 0) && (slave_status == CMD_SLAVE_STATUS_SHUTDOWN))
 	{
-		kprintf("Aspetto..\n");
+		slave_shutdown();
 		return;
 	}
 
-	if (slave_status == CMD_SLAVE_STATUS_BROADCAST)
+	if ((time <= resend_time[retry]) &&
+				(slave_status == CMD_SLAVE_STATUS_BROADCAST))
 	{
-		uint8_t id = radio_cfg_id();
-		int sent = protocol_broadcast(fd, proto, id, (const uint8_t *)"broadcast", sizeof("broadcast"));
-		kprintf("Broadcast sent[%d] %s[%d]\n", proto->type, sent < 0 ? "Error!":"Ok", sent);
-	}
 
-	if (slave_status == CMD_SLAVE_STATUS_SHUTDOWN)
-	{
-		kprintf("Spengo..\n");
-	}
-}
+		Radio *fd = RADIO_CAST(_fd);
+		protocol_encode(fd, proto);
+		int sent = protocol_send(_fd, proto, radio_cfg_id(), CMD_BROADCAST);
 
-void cmd_poll(KFile *fd, Protocol *proto)
-{
-	memset(proto, 0, sizeof(Protocol));
-	for (int i = 0; i < CMD_DEVICES; i++)
-	{
-		kprintf("%d: ", i);
-		if (local_dev[i].addr)
+		LOG_INFO("Broadcast sent[%d] %s[%d] time[%d]\n",
+					proto->type, sent < 0 ? "Error!":"Ok", sent, resend_time[retry]);
+
+		retry += 1;
+		if (retry == CMD_MAX_RETRY)
 		{
-			if (ticks_to_ms(timer_clock() - local_dev[i].timeout) > CMD_TIMEOUT)
-			{
-				kprintf("Addr[%d] timeout remove it..\n", local_dev[i].addr);
-				memset(&local_dev[i], 0, sizeof(Devices));
-				continue;
-			}
-
-			kprintf("Addr[%d],status[%d],ticks[%ld]\n", local_dev[i].addr,
-						local_dev[i].status, local_dev[i].timeout);
-
-			if (local_dev[i].status == CMD_NEW_DEV)
-			{
-				kprintf("Get data..from[%d]\n", local_dev[i].addr);
-				int ret = protocol_sendBuf(fd, proto, local_dev[i].addr, CMD_DATA,
-						(const uint8_t *)"data_query", sizeof("data_query"));
-
-				if (ret < 0)
-					continue;
-
-				local_dev[i].status = CMD_WAIT_DEV;
-				continue;
-			}
-			if (local_dev[i].status == CMD_WAIT_DEV)
-			{
-			}
-		}
-		else
-		{
-			kprintf("Empty\n");
+			slave_status = CMD_SLAVE_STATUS_SHUTDOWN;
+			LOG_INFO("Max retry Shutdown\n");
 		}
 	}
-	kputs("-----\n");
 }
 
-void cmd_init(const RadioCfg *cfg)
+void cmd_poll(uint8_t id, KFile *_fd, struct Protocol *proto)
 {
-	radio_cfg = cfg;
+	if (id == RADIO_MASTER)
+	{
+		int time = elapse_time - rtc_time();
+		if (time < 0)
+		{
+			Radio *fd = RADIO_CAST(_fd);
+			protocol_encode(fd, proto);
+			elapse_time = rtc_time() + CMD_TIME_TO_STANDBY + CMD_TIME_TO_WAKEUP;
+		}
+	}
+	else
+	{
+		cmd_slavePoll(_fd, proto);
+	}
 }
+
+void cmd_init()
+{
+	elapse_time = rtc_time() + CMD_TIME_TO_STANDBY;
+	slave_status = CMD_SLAVE_STATUS_BROADCAST;
+}
+

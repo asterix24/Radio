@@ -148,4 +148,5 @@ void clock_init(void)
 
 	/* Clock the system from the PLL */
 	rcc_set_clock_source(RCC_SYSCLK_PLLCLK);
+
 }

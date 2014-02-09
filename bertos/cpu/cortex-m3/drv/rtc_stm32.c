@@ -37,60 +37,34 @@
 
 #include "clock_stm32.h"
 
+#include "cfg/cfg_rtc.h"
+
+// Define logging setting (for cfg/log.h module).
+#define LOG_LEVEL   RTC_LOG_LEVEL
+#define LOG_FORMAT  RTC_LOG_FORMAT
+
+#include <cfg/log.h>
+
 #include <cfg/compiler.h>
 #include <cfg/module.h>
 #include <cfg/debug.h>
 
 #include <io/stm32.h>
-#include <io/stm32_pwr.h>
 
 #include <cpu/power.h> // cpu_relax()
 
 #include <drv/rtc.h>
 
 /* PWR registers base */
-static struct PWR *PWR = (struct PWR *)PWR_BASE;
+static struct stm32_pwr *PWR = (struct stm32_pwr *)PWR_BASE;
 
-/* RTC clock source: LSE */
-#define RTC_CLKSRC	0x00000100
-/* RTC clock: 32768 Hz */
-#define RTC_CLOCK	32768
-/* RTC clock period (in ms) */
-#define RTC_PERIOD      1000
-
-/* RTC control register */
-#define RTC_CRH		(*(reg16_t *)(RTC_BASE + 0x00))
-#define RTC_CRL		(*(reg16_t *)(RTC_BASE + 0x04))
-
-#define RTC_CRL_SECIE         BV(0)
-#define RTC_CRL_ALRIE         BV(1)
-#define RTC_CRL_OWIE          BV(2)
-
-#define RTC_CRL_SECF          BV(0)
-#define RTC_CRL_ALRF          BV(1)
-#define RTC_CRL_OWF           BV(2)
-#define RTC_CRL_RSF           BV(3)
-#define RTC_CRL_CNF           BV(4)
-#define RTC_CRL_RTOFF         BV(5)
-
-/* RTC prescaler load register */
-#define RTC_PRLH	(*(reg16_t *)(RTC_BASE + 0x08))
-#define RTC_PRLL	(*(reg16_t *)(RTC_BASE + 0x0c))
-
-/* RTC prescaler divider register */
-#define RTC_DIVH	(*(reg16_t *)(RTC_BASE + 0x10))
-#define RTC_DIVL	(*(reg16_t *)(RTC_BASE + 0x14))
-
-/* RTC counter register */
-#define RTC_CNTH	(*(reg16_t *)(RTC_BASE + 0x18))
-#define RTC_CNTL	(*(reg16_t *)(RTC_BASE + 0x1c))
-
-/* RTC alarm register */
-#define RTC_ALRH	(*(reg16_t *)(RTC_BASE + 0x20))
-#define RTC_ALRL	(*(reg16_t *)(RTC_BASE + 0x24))
 
 static void rtc_enterConfig(void)
 {
+	PWR->CR |= PWR_CR_DBP;
+	while (!(RTC_CRL & RTC_CRL_RTOFF))
+		cpu_relax();
+
 	/* Enter configuration mode */
 	RTC_CRL |= RTC_CRL_CNF;
 }
@@ -99,8 +73,11 @@ static void rtc_exitConfig(void)
 {
 	/* Exit from configuration mode */
 	RTC_CRL &= ~RTC_CRL_CNF;
+
 	while (!(RTC_CRL & RTC_CRL_RTOFF))
 		cpu_relax();
+
+	PWR->CR &= ~PWR_CR_DBP;
 }
 
 uint32_t rtc_time(void)
@@ -116,37 +93,71 @@ void rtc_setTime(uint32_t val)
 	rtc_exitConfig();
 }
 
+void rtc_setAlarm(rtc_clock_t val)
+{
+	rtc_enterConfig();
+	RTC_ALRH = (val >> 16) & 0xffff;
+	RTC_ALRL = val & 0xffff;
+	rtc_exitConfig();
+}
+
 /* Initialize the RTC clock */
 int rtc_init(void)
 {
+	uint32_t val = rtc_time();
 #if CONFIG_KERN
 	MOD_CHECK(proc);
 #endif
 	/* Enable clock for Power interface */
-	RCC->APB1ENR |= RCC_APB1_PWR;
+	RCC->APB1ENR |= RCC_APB1_PWR | RCC_APB1_BKP;
 
 	/* Enable access to RTC registers */
 	PWR->CR |= PWR_CR_DBP;
 
+	/* Reset bkp domain to change clock source */
+	RCC->BDCR |= RCC_BDCR_RTS;
+	RCC->BDCR &= ~RCC_BDCR_RTS;
+
+#if CFG_RTC_CLOCK_SRC==EXTERNAL // LSE
 	/* Enable LSE */
 	RCC->BDCR |= RCC_BDCR_LSEON;
 	/* Wait for LSE ready */
 	while (!(RCC->BDCR & RCC_BDCR_LSERDY))
 		cpu_relax();
-
 	/* Set clock source and enable RTC peripheral */
-	RCC->BDCR |= RTC_CLKSRC | RCC_BDCR_RTCEN;
+	RCC->BDCR |= RCC_BDCR_RTCSEL_LSE | RCC_BDCR_RTCEN;
+#else // INTERNAL LSI
+
+	/* Start LSI low speed internal oscillator */
+	RCC->CSR |= BV(0);
+	/* Whait for stable lsi clock */
+	while(!(RCC->CSR & BV(1)));
+
+	RCC->BDCR |= RCC_BDCR_RTCSEL_LSI;
+	RCC->BDCR |= RCC_BDCR_RTCEN;
+
+	/* wait syncro */
+	RTC_CRL &= ~RTC_CRL_RSF;
+	while (!(RTC_CRL & RTC_CRL_RSF))
+		cpu_relax();
+
+	rtc_exitConfig();
+
+#endif
 
 	rtc_enterConfig();
 
 	/* Set prescaler */
-	RTC_PRLH = ((RTC_PERIOD * RTC_CLOCK / 1000 - 1) >> 16) & 0xff;
-	RTC_PRLL = ((RTC_PERIOD * RTC_CLOCK / 1000 - 1)) & 0xffff;
+	RTC_PRLH = ((CFG_RTC_PERIOD * CFG_RTC_CLOCK / 1000 - 1) >> 16) & 0xff;
+	RTC_PRLL = ((CFG_RTC_PERIOD * CFG_RTC_CLOCK / 1000 - 1)) & 0xffff;
 
 	rtc_exitConfig();
 
 	/* Disable access to the RTC registers */
 	PWR->CR &= ~PWR_CR_DBP;
 
+	rtc_setTime(val);
+
 	return 0;
 }
+

@@ -26,31 +26,50 @@
  * invalidate any other reasons why the executable file might be covered by
  * the GNU General Public License.
  *
- * Copyright 2010 Develer S.r.l. (http://www.develer.com/)
+ * Copyright 2014 Develer S.r.l. (http://www.develer.com/)
  *
  * -->
  *
- * \brief Real-time clock interface
+ * \brief Configuration file for the RTC.
  *
- * Abstract real-time clock interface.
- *
- * \attention The API is work in progress and may change in future versions.
- *
- * $WIZ$ module_name = "rtc"
- * $WIZ$ module_supports = "stm32"
+ * \author Daniele Basile <asterix@develer.com>
  */
 
-#ifndef RTC_H
-#define RTC_H
+#ifndef CFG_RTC_H
+#define CFG_RTC_H
 
-#include <cfg/compiler.h>
+/**
+ * Module logging level.
+ *
+ * $WIZ$ type = "enum"
+ * $WIZ$ value_list = "log_level"
+ */
+#define RTC_LOG_LEVEL      LOG_LVL_WARN
 
-typedef uint32_t rtc_clock_t;
+/**
+ * Module logging format.
+ *
+ * $WIZ$ type = "enum"
+ * $WIZ$ value_list = "log_format"
+ */
+#define RTC_LOG_FORMAT     LOG_FMT_TERSE
 
-rtc_clock_t rtc_time(void);
-void rtc_setTime(rtc_clock_t date);
-void rtc_setAlarm(rtc_clock_t val);
 
-int rtc_init(void);
+/**
+ * clock source.
+ */
+#define INTERNAL 0
+#define EXTERNAL 1
 
-#endif /* RTC_H */
+#define CFG_RTC_CLOCK_SRC   INTERNAL
+
+/* RTC clock:
+ * low externale osc: 32768 Hz
+ * low inernal osc: 40000 Hz
+ */
+#define CFG_RTC_CLOCK	40000
+
+/* RTC clock period (in ms) */
+#define CFG_RTC_PERIOD      1000
+
+#endif /* CFG_RTC_H */

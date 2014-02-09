@@ -36,7 +36,7 @@
 #include <cpu/types.h>
 
 /* Settings */
-#define PROTO_DATALEN  (RADIO_MAXPAYLOAD_LEN - 4) // See Protocol structure, we remove the other fields.
+#define PROTO_DATALEN  (RADIO_MAXPAYLOAD_LEN - 12) // See Protocol structure, we remove the other fields.
 
 /* Protocol constant define */
 #define PROTO_ACK    0x06
@@ -66,6 +66,7 @@ typedef struct Protocol
 {
 	uint8_t type;
 	uint8_t addr;
+	uint32_t timestamp;
 	uint16_t len;
 	uint8_t data[PROTO_DATALEN];
 } Protocol;
@@ -74,7 +75,7 @@ int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type);
 int protocol_sendByte(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, uint8_t data);
 int protocol_sendBuf(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, const uint8_t *data, size_t len);
 void protocol_decode(Radio *fd, Protocol *proto);
-void protocol_encode(Protocol *proto);
+void protocol_encode(Radio *fd, Protocol *proto);
 int protocol_poll(KFile *fd, Protocol *proto);
 void protocol_init(const Cmd *table);
 

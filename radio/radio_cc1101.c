@@ -238,7 +238,7 @@ static size_t radio_recv(struct KFile *_fd, void *buf, size_t size)
 	{
 		radio_goIdle();
 		cc1101_strobe(CC1101_SFRX);
-		LOG_ERR("Rx timeout..\n");
+		LOG_INFO("Rx timeout..\n");
 		fd->error = RADIO_RX_TIMEOUT;
 		return RADIO_RX_TIMEOUT;
 	}
@@ -254,7 +254,8 @@ static size_t radio_recv(struct KFile *_fd, void *buf, size_t size)
 	fd->lqi = radio_lqi();
 	fd->rssi = radio_rssi();
 	fd->status = cc1101_strobe(CC1101_SFRX);
-	LOG_INFO("Rx: s1[%d], lqi[%d] rssi[%d]\n", STATUS_STATE(fd->status), fd->lqi & ~CC1101_LQI_CRC_OK, fd->rssi);
+	LOG_INFO("Rx: s1[%d], lqi[%d] rssi[%d]\n", STATUS_STATE(fd->status),
+						fd->lqi & ~CC1101_LQI_CRC_OK, fd->rssi);
 
 	LOG_INFOB(
 	kputs("[");

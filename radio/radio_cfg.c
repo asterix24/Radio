@@ -47,37 +47,31 @@
                     RADIO_CFG_ID2 | \
                     RADIO_CFG_ID3)
 
-
-const RadioCfg radio_cfg_table[] =
-{
-	{ 1, "hH", sizeof("hH"),
-		{
-			measure_intTemp,
-			measure_intVref,
-			NULL,
-		},
-	},
-	{ 2, "hH", sizeof("hH"),
-		{
-			measure_intTemp,
-			measure_intVref,
-			NULL,
-		},
-	},
-	{ 3, "hH", sizeof("hH"),
-		{
-			measure_intTemp,
-			measure_intVref,
-			NULL,
-		},
-	},
-	{ 0, "", 0,
-		{
-			NULL,
-		},
+const RadioCfg default_cfg = {
+	"hH", 2,
+	{
+		measure_intTemp,
+		measure_intVref,
 	},
 };
 
+const RadioCfg module_cfg = {
+	"hHii", 4,
+	{
+		measure_intTemp,
+		measure_intVref,
+		measure_ntc0,
+		measure_ntc1,
+	},
+};
+
+RadioCfg const *radio_cfg_table[] =
+{
+	&module_cfg, // Id = 0 -> MASTER
+	&module_cfg, // Id = 1
+	&default_cfg, // Id = 2
+	&default_cfg, // Id = 3
+};
 
 /*
  * Get the device id
@@ -89,13 +83,11 @@ uint8_t radio_cfg_id(void)
 
 const RadioCfg *radio_cfg(int id)
 {
-	for (int i = 0; radio_cfg_table[i].id && radio_cfg_table[i].fmt; i++)
-	{
-		if (id == radio_cfg_table[i].id)
-			return &radio_cfg_table[i];
-	}
 
-	return NULL;
+	if ((size_t)id >= countof(radio_cfg_table))
+		return NULL;
+
+	return radio_cfg_table[id];
 }
 
 void radio_cfg_init(void)

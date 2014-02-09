@@ -26,31 +26,26 @@
  * invalidate any other reasons why the executable file might be covered by
  * the GNU General Public License.
  *
- * Copyright 2010 Develer S.r.l. (http://www.develer.com/)
+ * Copyright 2011 Develer S.r.l. (http://www.develer.com/)
  *
  * -->
  *
- * \brief Real-time clock interface
+ * \brief Table conversion (interface)
  *
- * Abstract real-time clock interface.
- *
- * \attention The API is work in progress and may change in future versions.
- *
- * $WIZ$ module_name = "rtc"
- * $WIZ$ module_supports = "stm32"
+ * \author Francesco Sacchi <batt@develer.com>
  */
 
-#ifndef RTC_H
-#define RTC_H
+#ifndef ALGO_TABLE_H
+#define ALGO_TABLE_H
 
 #include <cfg/compiler.h>
 
-typedef uint32_t rtc_clock_t;
+typedef struct Table
+{
+	int x;
+	int y;
+} Table;
 
-rtc_clock_t rtc_time(void);
-void rtc_setTime(rtc_clock_t date);
-void rtc_setAlarm(rtc_clock_t val);
+int table_linearInterpolation(const Table *table, size_t size, int x);
 
-int rtc_init(void);
-
-#endif /* RTC_H */
+#endif /* ALGO_TABLE_H */
