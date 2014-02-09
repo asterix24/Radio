@@ -75,12 +75,13 @@ const Cmd master_cmd[] = {
 
 static uint8_t slave_status;
 static uint8_t retry;
-static uint32_t start_time;
+static int elapse_time;
 
 static void slave_shutdown(void)
 {
-	rtc_setAlarm(rtc_time() + (uint32_t)CMD_WAKEUP_TIME);
-	LOG_INFO("Go Standby, wakeup to %lds\n", rtc_time() + CMD_WAKEUP_TIME);
+	uint32_t wup = rtc_time() + (uint32_t)CMD_TIME_TO_WAKEUP;
+	LOG_INFO("Go Standby, wakeup to %lds\n", wup);
+	rtc_setAlarm(wup);
 	go_standby();
 }
 
@@ -101,6 +102,7 @@ static int cmd_slave_broadcast(KFile *fd, Protocol *proto)
 	{
 		slave_status = CMD_SLAVE_STATUS_SHUTDOWN;
 		LOG_INFO("Broadcast ACK\n");
+		LOG_INFO("Status Shutdown\n");
 	}
 	else
 		LOG_INFO("Broadcast NACK\n");
@@ -115,23 +117,21 @@ const Cmd slave_cmd[] = {
 	{ 0     , NULL }
 };
 
-static uint16_t resend_time[] = { CMD_TIMEOUT / 3, CMD_TIMEOUT / 2, CMD_TIMEOUT - 1};
+static uint16_t resend_time[] = { CMD_TIME_TO_STANDBY - 1, CMD_TIME_TO_STANDBY / 2, CMD_TIME_TO_STANDBY / 3 };
 
 static void cmd_slavePoll(KFile *_fd, Protocol *proto)
 {
-	if (slave_status == CMD_SLAVE_STATUS_WAIT)
-	{
-		LOG_INFO("wait..(%ld)\n", rtc_time());
-		return;
-	}
+	int time = elapse_time - rtc_time();
 
-	if ((slave_status == CMD_SLAVE_STATUS_SHUTDOWN) || (retry == CMD_MAX_RETRY))
+	// Time elapsed, we shutdown
+	if ((time < 0) && (slave_status == CMD_SLAVE_STATUS_SHUTDOWN))
 	{
 		slave_shutdown();
 		return;
 	}
 
-	if ((rtc_time() - start_time) > resend_time[retry])
+	if ((time <= resend_time[retry]) &&
+				(slave_status == CMD_SLAVE_STATUS_BROADCAST))
 	{
 
 		Radio *fd = RADIO_CAST(_fd);
@@ -142,6 +142,11 @@ static void cmd_slavePoll(KFile *_fd, Protocol *proto)
 					proto->type, sent < 0 ? "Error!":"Ok", sent, resend_time[retry]);
 
 		retry += 1;
+		if (retry == CMD_MAX_RETRY)
+		{
+			slave_status = CMD_SLAVE_STATUS_SHUTDOWN;
+			LOG_INFO("Max retry Shutdown\n");
+		}
 	}
 }
 
@@ -149,11 +154,12 @@ void cmd_poll(uint8_t id, KFile *_fd, struct Protocol *proto)
 {
 	if (id == RADIO_MASTER)
 	{
-		if ((rtc_time() - start_time) > (CMD_TIMEOUT + CMD_WAKEUP_TIME))
+		int time = elapse_time - rtc_time();
+		if (time < 0)
 		{
 			Radio *fd = RADIO_CAST(_fd);
 			protocol_encode(fd, proto);
-			start_time = rtc_time();
+			elapse_time = rtc_time() + CMD_TIME_TO_STANDBY + CMD_TIME_TO_WAKEUP;
 		}
 	}
 	else
@@ -164,7 +170,7 @@ void cmd_poll(uint8_t id, KFile *_fd, struct Protocol *proto)
 
 void cmd_init()
 {
-	start_time = rtc_time();
+	elapse_time = rtc_time() + CMD_TIME_TO_STANDBY;
 	slave_status = CMD_SLAVE_STATUS_BROADCAST;
 }
 
