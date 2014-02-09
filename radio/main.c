@@ -89,7 +89,7 @@ int main(void)
 	else
 		protocol_init(slave_cmd);
 
-	radio_timeout(&radio, 1000);
+	radio_timeout(&radio, 500);
 	while (1)
 	{
 		//kprintf("%ld\n", rtc_time());
