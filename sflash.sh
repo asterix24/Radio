@@ -1,4 +1,5 @@
-PORT="/dev/tty.PL2303-0000103D"
+PORT="/dev/cu.PL2303-0000101D"
+
 
 if [ $# -ge 1 ]; then
 	PORT=$1

@@ -1,13 +1,14 @@
 use Mojolicious::Lite;
 use POSIX qw(strftime);
 
-my @measure_label = [
-	"Data", "Ora",
-	"Id", "LQI", "RSSI",
+my @status_label = (
+	"Id",
+	"Data",
+	"Ora",
+	"LQI",
+	"RSSI",
 	"Up time",
-	"T.CPU", "Vint",
-	"T.1", "T.2"
-];
+);
 
 my @dev0_map = (
 	{"label" => "Id"       , "value" => "-" },
@@ -43,38 +44,45 @@ my @dev_map = (
 # Simple plain text response
 get '/' => sub {
 	my $self  = shift;
-	$self->stash(host => $self->req->url->to_abs->host);
-	$self->stash(ua => $self->req->headers->user_agent);
+	#$self->stash(host => $self->req->url->to_abs->host);
+	#$self->stash(ua => $self->req->headers->user_agent);
 
 	#Generate current file name
 	my $n = strftime "%Y%m%d.log\n", localtime;
 	print $n."\n";
 	$n = "data/20140221.log";
 
-	open(FILE, "<", $n) or die "cannot open < name: $!";
-	my %device = ();
+
+	# Find lastest devices update.
 	my %d = ();
-	while (<FILE>)
-	{
-		chomp;
+	open(FILE, "<", $n) or die "cannot open < name: $!";
+	while (<FILE>) {
 		$d{$1} = $_ if (/^(\d+);/);
 	}
 	close FILE;
 
-	foreach (keys %d) {
+	# Fill data to render.
+	my @status_dev = ();
+	foreach (sort keys %d) {
 		my @data = split ';', $d{$_};
 		my $dev_id = $data[0];
 		my $ref = $dev_map[$dev_id];
+		my @d = ();
 
-		#controllare se le lunghezze sono diverse..
 		for my $i (0..$#data) {
+			#Break if we not have more label
+			last if $i > $#{$ref};
+
 			$ref->[$i]{'value'} = $data[$i];
+			push @d, $data[$i] if $i <= $#status_label;
 		}
+		push @status_dev, [ @d ];
 	}
 
-	$self->stash(label => @measure_label);
+
 	$self->stash(dev_map => \@dev_map);
-	$self->stash(device => \%device);
+	$self->stash(status_label => \@status_label);
+	$self->stash(status_dev => \@status_dev);
 
 } => 'index';
 

@@ -9,7 +9,7 @@ radio_DEBUG = 1
 # Our target application
 TRG += radio
 
-radio_PREFIX = "/localhome/toolchain/arm/bin/arm-none-eabi-"
+radio_PREFIX = "arm-none-eabi-"
 
 radio_SUFFIX = ""
 

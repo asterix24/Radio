@@ -1,15 +1,26 @@
 #! /bin/env python
 
 import serial
+import serial.tools.list_ports
 import sys
 
-def_port = '/dev/tty.PL2303-0000101D'
 def_baud = 115200
+def_port = ""
+
+for i in serial.tools.list_ports.comports():
+    if 'PL2303' in i[0]:
+        def_port = i[0]
+        print "Open: ", def_port
+        break
+
+if def_port == "":
+    print "No valid port."
+    sys.exit(1)
 
 try:
     s = serial.Serial(
-        port='/dev/tty.usbserial',
-        baudrate=115200,     # baudrate
+        port=def_port,
+        baudrate=def_baud,     # baudrate
         bytesize=8,             # number of databits
         parity=serial.PARITY_NONE,
         stopbits=1,

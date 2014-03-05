@@ -18,7 +18,7 @@ try:
 
     s.setDTR(0) #disabilito reset
     s.setRTS(1) #disabilito boot0
-    o = open('uno', 'w')
+    o = open('data.log', 'w')
     while 1:
         line = s.readline()
         if "$" in line:
@@ -26,6 +26,8 @@ try:
         o.flush()
 
         sys.stdout.write(line)
+        sys.stdout.flush()
+
 except KeyboardInterrupt:
     print 'Close serial'
     s.flush()
