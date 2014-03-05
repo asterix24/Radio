@@ -10,7 +10,6 @@ my @status_label = (
 	"Up time",
 );
 
-
 my @dev_0_map = (
 	{"label" => "Id"       , "value" => "-" },
 	{"label" => "Data"     , "value" => "-" },
@@ -77,17 +76,16 @@ get '/' => sub {
 	#$self->stash(ua => $self->req->headers->user_agent);
 
 	#Generate current file name
-	my $n = strftime "%Y%m%d.log\n", localtime;
-	print $n."\n";
-	$n = "data/20140221.log";
+	my $n = strftime "data/%Y%m%d.log", localtime;
 
 	# Find lastest devices update.
 	my %d = ();
-	open(FILE, "<", $n) or die "cannot open < name: $!";
-	while (<FILE>) {
-		$d{$1} = $_ if (/^(\d+);/);
+	if (open(FILE, "<", $n)) {
+		while (<FILE>) {
+			$d{$1} = $_ if (/^(\d+);/);
+		}
+		close FILE;
 	}
-	close FILE;
 
 	# Fill data to render.
 	my @dev_map = ();
@@ -108,7 +106,6 @@ get '/' => sub {
 		}
 		push @status_dev, [ @d ];
 	}
-
 
 	$self->stash(dev_map => \@dev_map);
 	$self->stash(status_label => \@status_label);
