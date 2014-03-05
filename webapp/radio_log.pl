@@ -9,17 +9,21 @@ my @measure_label = [
 	"T.1", "T.2"
 ];
 
-my @default_map = (
-	"Data"     ,
-	"Ora"      ,
-	"LQI"      ,
-	"RSSI"     ,
-	"Up Time"  ,
-	"CPU Temp" ,
-	"CPU Vint"
+my @dev0_map = (
+	{"label" => "Id"       , "value" => "-" },
+	{"label" => "Data"     , "value" => "-" },
+	{"label" => "Ora"      , "value" => "-" },
+	{"label" => "LQI"      , "value" => "-" },
+	{"label" => "RSSI"     , "value" => "-" },
+	{"label" => "Up Time"  , "value" => "-" },
+	{"label" => "CPU Temp" , "value" => "-" },
+	{"label" => "CPU Vint" , "value" => "-" },
+	{"label" => "Temp1"    , "value" => "-" },
+	{"label" => "Temp2"    , "value" => "-" },
 );
 
-my @dev0_map = (
+my @dev1_map = (
+	{"label" => "Id"       , "value" => "-" },
 	{"label" => "Data"     , "value" => "-" },
 	{"label" => "Ora"      , "value" => "-" },
 	{"label" => "LQI"      , "value" => "-" },
@@ -33,7 +37,7 @@ my @dev0_map = (
 
 my @dev_map = (
 	\@dev0_map,
-	\@dev0_map,
+	\@dev1_map,
 );
 
 # Simple plain text response
@@ -49,28 +53,28 @@ get '/' => sub {
 
 	open(FILE, "<", $n) or die "cannot open < name: $!";
 	my %device = ();
+	my %d = ();
 	while (<FILE>)
 	{
 		chomp;
-		my @s = split ';', $_;
-		$device{$s[0]} = \@s;
+		$d{$1} = $_ if (/^(\d+);/);
 	}
 	close FILE;
+
+	foreach (keys %d) {
+		my @data = split ';', $d{$_};
+		my $dev_id = $data[0];
+		my $ref = $dev_map[$dev_id];
+
+		#controllare se le lunghezze sono diverse..
+		for my $i (0..$#data) {
+			$ref->[$i]{'value'} = $data[$i];
+		}
+	}
 
 	$self->stash(label => @measure_label);
 	$self->stash(dev_map => \@dev_map);
 	$self->stash(device => \%device);
-
-	print "....\n";
-	foreach (@dev_map) {
-		print "....qui...\n";
-		foreach my $a ($_) {
-			foreach my $h (@{$a}) {
-				print ${$h}{'label'},${$h}{'value'},"\n";
-			}
-		}
-		print "....\n";
-	}
 
 } => 'index';
 
