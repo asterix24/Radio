@@ -75,16 +75,44 @@ get '/' => sub {
 	#$self->stash(host => $self->req->url->to_abs->host);
 	#$self->stash(ua => $self->req->headers->user_agent);
 
-	#Generate current file name
-	my $n = strftime "data/%Y%m%d.log", localtime;
-
-	# Find lastest devices update.
-	my %d = ();
-	if (open(FILE, "<", $n)) {
-		while (<FILE>) {
-			$d{$1} = $_ if (/^(\d+);/);
+	# Get the last log file
+	my @log_file_list = ();
+	my $dir =  "data";
+	if (opendir(DIR, $dir)) {
+		while (my $file = readdir(DIR)) {
+			# Use a regular expression to ignore files beginning with a period
+			next if ($file =~ m/^\./);
+			push @log_file_list, $dir."/".$file;
 		}
-		close FILE;
+		closedir(DIR);
+		@log_file_list = sort @log_file_list;
+	}
+
+	my %d = ();
+	if (@log_file_list) {
+		my $n = $log_file_list[$#log_file_list];
+		print "current log file: $n\n";
+		# Find lastest devices update.
+		if (open(FILE, "<", $n)) {
+			while (<FILE>) {
+				my ($id, $val);
+				# Save device id and all log data of it
+				if (/^(\d+);/) {
+					$id = $1;
+					$val = $_;
+				}
+				#Check if current id is valid, and we have valid label map
+				if ($id < $#dev_map_available) {
+					$d{$id} = $val;
+				} else {
+					print "Error id=$id not valid, discard it! (max $#dev_map_available)\n";
+					last;
+				}
+			}
+			close FILE;
+		} else {
+			print "Error on $n: $!\n";
+		}
 	}
 
 	# Fill data to render.
