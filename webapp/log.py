@@ -38,9 +38,14 @@ try:
         line = s.readline()
         line = line.strip()
         if line:
-            line = "%s %s\n" % (datetime.datetime.today(), line)
+            date = datetime.datetime.today().strftime("%d/%m/%Y")
+            time = datetime.datetime.today().strftime("%X")
+
             if "$" in line and o is not None:
-                o.write(line.strip())
+                line = line.replace("$","")
+                line = line.strip()
+                line = "%s;%s;%s;%s\n" % (line[0], date, time, line[1:])
+                o.write(line)
             o.flush()
 
             sys.stdout.write(line)
