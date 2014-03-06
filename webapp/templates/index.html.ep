@@ -100,13 +100,13 @@
             <table class="table table-striped">
               <thead>
                 <tr>
-					<% foreach (@$status_label) { %>
+					<% foreach (@{$status_label}) { %>
 					<th><%= $_ %></th>
 					<% } %>
                 </tr>
               </thead>
               <tbody>
-			  <% foreach my $status (@$status_dev) {  %>
+			  <% foreach my $status (@{$status_dev}) {  %>
                 <tr>
 					<% foreach (@{$status}) { %>
 						<td><%=  $_ %></td>
