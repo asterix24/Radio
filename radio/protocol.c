@@ -32,12 +32,15 @@
 #include <cfg/debug.h>
 
 // Define logging setting (for cfg/log.h module).
-#define LOG_LEVEL   2
+#define LOG_LEVEL   3
 #define LOG_FORMAT  0
 
 #include <cfg/log.h>
 
 #include <drv/rtc.h>
+#include <algo/rotating_hash.h>
+
+#include <drv/bkp_stm32.h>
 
 #include <string.h>
 
@@ -206,6 +209,24 @@ void protocol_encode(Radio *fd, Protocol *proto)
 	}
 
 	kputs("\n");
+}
+
+int protocol_isDataChage(Protocol *proto)
+{
+	uint16_t rot;
+	uint16_t prev_rot;
+
+	bkp_read(&prev_rot, sizeof(uint16_t));
+
+	rotating_init(&rot);
+	rotating_update(proto->data, proto->len, &rot);
+	LOG_INFO("rot-prev[%d] now[%d]\n", prev_rot, rot);
+
+	if (rot == prev_rot)
+		return 0;
+
+	bkp_write(&rot, sizeof(uint16_t));
+	return 1;
 }
 
 void protocol_init(const Cmd *table)

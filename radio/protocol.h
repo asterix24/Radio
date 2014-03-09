@@ -77,6 +77,7 @@ int protocol_sendBuf(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, con
 void protocol_decode(Radio *fd, Protocol *proto);
 void protocol_encode(Radio *fd, Protocol *proto);
 int protocol_poll(KFile *fd, Protocol *proto);
+int protocol_isDataChage(Protocol *proto);
 void protocol_init(const Cmd *table);
 
 INLINE int protocol_broadcast(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len)
