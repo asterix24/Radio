@@ -115,8 +115,8 @@ int rtc_init(void)
 	PWR->CR |= PWR_CR_DBP;
 
 	/* Reset bkp domain to change clock source */
-	RCC->BDCR |= RCC_BDCR_RTS;
-	RCC->BDCR &= ~RCC_BDCR_RTS;
+	//RCC->BDCR |= RCC_BDCR_RTS;
+	//RCC->BDCR &= ~RCC_BDCR_RTS;
 
 #if CFG_RTC_CLOCK_SRC==EXTERNAL // LSE
 	/* Enable LSE */
