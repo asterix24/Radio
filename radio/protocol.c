@@ -209,6 +209,17 @@ void protocol_encode(Radio *fd, Protocol *proto)
 	}
 
 	kputs("\n");
+
+}
+
+void protocol_updateRot(Protocol *proto)
+{
+	// Save the rot of current encoded data.
+	uint16_t rot;
+	rotating_init(&rot);
+	rotating_update(proto->data, proto->len, &rot);
+	LOG_INFO("Update rot in bkp[%d]\n", rot);
+	bkp_write(&rot, sizeof(uint16_t));
 }
 
 int protocol_isDataChage(Protocol *proto)
@@ -220,7 +231,7 @@ int protocol_isDataChage(Protocol *proto)
 
 	rotating_init(&rot);
 	rotating_update(proto->data, proto->len, &rot);
-	LOG_INFO("rot-prev[%d] now[%d]\n", prev_rot, rot);
+	LOG_INFO("Prev[%d] Now[%d]\n", prev_rot, rot);
 
 	if (rot == prev_rot)
 		return 0;
