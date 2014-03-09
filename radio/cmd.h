@@ -49,18 +49,18 @@
 #define CMD_WAIT_DEV                 2
 #define CMD_SLEEP_DEV                3
 
-#define CMD_SLAVE_STATUS_BROADCAST       0
-#define CMD_SLAVE_STATUS_WAIT            1
-#define CMD_SLAVE_STATUS_DATA            2
+#define CMD_SLAVE_STATUS_START           0
+#define CMD_SLAVE_STATUS_BROADCAST       1
+#define CMD_SLAVE_STATUS_WAIT            2
 #define CMD_SLAVE_STATUS_SHUTDOWN        3
 
 /*
  * Settings
  */
 #define CMD_DEVICES                  5
-#define CMD_TIME_TO_STANDBY         30 //s
+#define CMD_TIME_TO_STANDBY         20 //s
 #define CMD_TIME_TO_WAKEUP          60 //s
-#define CMD_MAX_RETRY                3
+#define CMD_TIME_AFTER_ACK          10 //s
 
 struct Protocol;
 typedef int (*cmd_t)(KFile *fd, struct Protocol *proto);

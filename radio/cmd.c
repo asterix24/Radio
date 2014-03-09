@@ -72,7 +72,7 @@ const Cmd master_cmd[] = {
 };
 
 static uint8_t slave_status;
-static uint8_t retry;
+static uint8_t retry = 1;
 static int elapse_time;
 
 static void slave_shutdown(void)
@@ -96,14 +96,16 @@ static int cmd_slave_sleep(KFile *fd, Protocol *proto)
 static int cmd_slave_broadcast(KFile *fd, Protocol *proto)
 {
 	(void)fd;
-	if (proto->data[0] == PROTO_ACK)
+
+	bool ret = (proto->data[0] == PROTO_ACK);
+
+	if (ret)
 	{
-		slave_status = CMD_SLAVE_STATUS_SHUTDOWN;
-		LOG_INFO("Broadcast ACK\n");
-		LOG_INFO("Status Shutdown\n");
+		slave_status = CMD_SLAVE_STATUS_WAIT;
+		elapse_time = rtc_time() + CMD_TIME_AFTER_ACK;
 	}
-	else
-		LOG_INFO("Broadcast NACK\n");
+
+	LOG_INFO("Broadcast %s\n", ret ? "ACK" : "NACK");
 
 	return 0;
 }
@@ -115,37 +117,64 @@ const Cmd slave_cmd[] = {
 	{ 0     , NULL }
 };
 
-static uint16_t resend_time[] = { CMD_TIME_TO_STANDBY - 1, CMD_TIME_TO_STANDBY / 2, CMD_TIME_TO_STANDBY / 3 };
-
 static void cmd_slavePoll(KFile *_fd, Protocol *proto)
 {
 	int time = elapse_time - rtc_time();
 
-	// Time elapsed, we shutdown
-	if ((time < 0) && (slave_status == CMD_SLAVE_STATUS_SHUTDOWN))
+	Radio *fd = RADIO_CAST(_fd);
+
+	/*
+	 * If measure are the same from last wakeup, we go to sleep,
+	 * to preserve battery
+	 */
+	if (slave_status == CMD_SLAVE_STATUS_START)
+	{
+		protocol_encode(fd, proto);
+		slave_status = CMD_SLAVE_STATUS_BROADCAST;
+		if (!protocol_isDataChage(proto))
+		{
+			LOG_INFO("No data change set shutdown state\n");
+			slave_status = CMD_SLAVE_STATUS_SHUTDOWN;
+		}
+	}
+
+	if (slave_status == CMD_SLAVE_STATUS_BROADCAST)
+	{
+		if (time <= (CMD_TIME_TO_STANDBY / retry))
+		{
+			protocol_encode(fd, proto);
+			protocol_updateRot(proto);
+			int sent = protocol_send(_fd, proto, radio_cfg_id(), CMD_BROADCAST);
+
+			LOG_INFO("Broadcast sent[%d] %s[%d] time[%d]\n",
+					proto->type, sent < 0 ? "Error!":"Ok", sent, CMD_TIME_TO_STANDBY / retry);
+
+			retry += 3;
+		}
+
+		if (time <= 0)
+		{
+			LOG_INFO("Timeout, no reply from master.\n");
+			slave_status = CMD_SLAVE_STATUS_SHUTDOWN;
+		}
+
+	}
+
+	if (slave_status == CMD_SLAVE_STATUS_WAIT)
+	{
+		if (time <= 0)
+		{
+			LOG_INFO("Time elapse, go sleep.\n");
+			slave_status = CMD_SLAVE_STATUS_SHUTDOWN;
+		}
+	}
+
+	if (slave_status == CMD_SLAVE_STATUS_SHUTDOWN)
 	{
 		slave_shutdown();
 		return;
 	}
 
-	if ((time <= resend_time[retry]) &&
-				(slave_status == CMD_SLAVE_STATUS_BROADCAST))
-	{
-
-		Radio *fd = RADIO_CAST(_fd);
-		protocol_encode(fd, proto);
-		int sent = protocol_send(_fd, proto, radio_cfg_id(), CMD_BROADCAST);
-
-		LOG_INFO("Broadcast sent[%d] %s[%d] time[%d]\n",
-					proto->type, sent < 0 ? "Error!":"Ok", sent, resend_time[retry]);
-
-		retry += 1;
-		if (retry == CMD_MAX_RETRY)
-		{
-			slave_status = CMD_SLAVE_STATUS_SHUTDOWN;
-			LOG_INFO("Max retry Shutdown\n");
-		}
-	}
 }
 
 void cmd_poll(uint8_t id, KFile *_fd, struct Protocol *proto)
@@ -169,6 +198,6 @@ void cmd_poll(uint8_t id, KFile *_fd, struct Protocol *proto)
 void cmd_init()
 {
 	elapse_time = rtc_time() + CMD_TIME_TO_STANDBY;
-	slave_status = CMD_SLAVE_STATUS_BROADCAST;
+	slave_status = CMD_SLAVE_STATUS_START;
 }
 
