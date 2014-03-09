@@ -76,8 +76,6 @@ static void init(void)
 	cmd_init();
 }
 
-static Protocol proto;
-
 int main(void)
 {
 	init();
