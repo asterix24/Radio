@@ -71,7 +71,7 @@ static void init(void)
 
 	radio_cfg_init();
 	radio_init(&radio, ping_low_baud_868);
-	radio_timeout(&radio, -1);
+	radio_timeout(&radio, 500);
 
 	cmd_init();
 }
@@ -89,7 +89,6 @@ int main(void)
 	else
 		protocol_init(slave_cmd);
 
-	radio_timeout(&radio, 500);
 	while (1)
 	{
 		//kprintf("%ld\n", rtc_time());
