@@ -1,0 +1,54 @@
+% extends 'default';
+% content dashboard => begin
+<div class="row">
+	<% if (not @$dev_map) {%>
+		<h3 class="sub-header">Nessuno modulo</h3>
+	<% } %>
+
+	<% foreach my $dev_id (@$dev_map) { %>
+	<div class="col-xs-6 col-sm-3">
+		<table class="table table-condensed table-bordered table-striped">
+			<thead>
+				<tr>
+					<th class="text-center" colspan=2>Device</th>
+				</tr>
+			</thead>
+			<tbody>
+				<% foreach my $a (@{$dev_id}) { %>
+					<%	foreach my $h ($a) { %>
+					<tr>
+						<td><strong><%= ${$h}{'label'} %></strong></td>
+						<td><%=  ${$h}{'value'} %></td>
+					</tr>
+					<% 	} %>
+				<% 	} %>
+			</tbody>
+		</table>
+	</div>
+	<% }  %>
+</div>
+% end
+
+% content table => begin
+<div class="table-responsive">
+	<table class="table table-striped">
+		<thead>
+			<tr>
+				<% foreach (@{$status_label}) { %>
+					<th><%= $_ %></th>
+				<% } %>
+			</tr>
+		</thead>
+		<tbody>
+		<% foreach my $status (@{$status_dev}) {  %>
+		<tr>
+			<% foreach (@{$status}) { %>
+			<td><%=  $_ %></td>
+			<% } %>
+		</tr>
+		<% } %>
+		</tbody>
+	</table>
+</div>
+% end
+

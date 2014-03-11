@@ -139,9 +139,16 @@ get '/' => sub {
 	$self->stash(status_label => \@status_label);
 	$self->stash(status_dev => \@status_dev);
 
-} => 'index';
+} => 'home';
+
+get '/uno' => 'uno';
 
 get '/test' => 'test';
+
+get '/json' => sub {
+	my $self = shift;
+	$self->render(json => {foo => [1, 'test', 3]});
+};
 
 app->start;
 
