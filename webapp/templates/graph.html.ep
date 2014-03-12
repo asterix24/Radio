@@ -1,0 +1,62 @@
+% extends 'default';
+% content dashboard => begin
+<div id="chartdiv" style="height:400px;width:100%; "></div>
+% end
+% content script => begin
+<script>
+
+var plot1;
+
+function update_graph() {
+var ajaxDataRenderer = function() {
+  var ret = null;
+  $.ajax({
+    // have to use synchronous here, else the function 
+    // will return before the data is fetched
+    async: false,
+    url: "/json",
+    dataType:"json",
+    success: function(data) {
+	  ret = data;
+    },
+	complete: function() {
+		setTimeout(update_graph, 20000);
+	}
+  });
+  return ret;
+};
+
+if (plot1) {
+	plot1.destroy();
+}
+
+plot1 = $.jqplot('chartdiv', [], {
+	title: "Radio logger",
+	dataRenderer: ajaxDataRenderer,
+	axes: {
+		series: { shadowSize: 0 },
+		yaxis:  {
+			label:'Temp[C]',
+			min: 0,
+			max: 12,
+			labelRenderer: $.jqplot.CanvasAxisLabelRenderer
+			},
+		xaxis:  {
+			label:'Time[h]',
+ 			min:0,
+			max: 26,
+			labelRenderer: $.jqplot.CanvasAxisLabelRenderer
+		}
+	},
+	highlighter: {
+		show: true,
+		sizeAdjust: 7.5
+	},
+	cursor: {
+		show: true
+	}
+	});
+}
+update_graph();
+</script>
+% end

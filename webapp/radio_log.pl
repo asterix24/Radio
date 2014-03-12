@@ -141,13 +141,15 @@ get '/' => sub {
 
 } => 'home';
 
-get '/uno' => 'uno';
-
-get '/test' => 'test';
+get '/uno' => 'graph';
 
 get '/json' => sub {
 	my $self = shift;
-	$self->render(json => {foo => [1, 'test', 3]});
+	my @l = ();
+	for (my $i = 0; $i < 24; $i++) {
+		push @l, [ $i, rand(10)];
+	}
+	$self->render(json => [[@l]]);
 };
 
 app->start;
