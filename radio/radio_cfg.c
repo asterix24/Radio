@@ -56,7 +56,7 @@ const RadioCfg default_cfg = {
 };
 
 const RadioCfg module_cfg = {
-	"hHii", 4,
+	"hHhh", 4,
 	{
 		measure_intTemp,
 		measure_intVref,

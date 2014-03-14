@@ -182,6 +182,7 @@ void protocol_encode(Radio *fd, Protocol *proto)
 
 	ASSERT(cfg);
 
+
 	memset(proto, 0, sizeof(Protocol));
 
 	proto->timestamp = rtc_time();
