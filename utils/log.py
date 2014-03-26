@@ -55,9 +55,9 @@ try:
             print "Log file: ", file
 
         line = s.readline()
-        line = line.strip()
+        #line = line.strip()
         if line:
-            date = datetime.datetime.today().strftime("%d/%m/%Y")
+            date = datetime.datetime.today().strftime("%d-%m-%Y")
             time = datetime.datetime.today().strftime("%X")
 
             if "$" in line and o is not None:
