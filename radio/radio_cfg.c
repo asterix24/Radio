@@ -78,10 +78,22 @@ const RadioCfg debug_cfg = {
 
 RadioCfg const *radio_cfg_table[] =
 {
-	&module_cfg, // Id = 0 -> MASTER
+	&module_cfg, // Id = 0
 	&module_cfg, // Id = 1
 	&default_cfg, // Id = 2
-	&debug_cfg, // Id = 3
+	&default_cfg, // Id = 3
+	&default_cfg, // Id = 4
+	&default_cfg, // Id = 5
+	&default_cfg, // Id = 6
+	&default_cfg, // Id = 7
+	&default_cfg, // Id = 8
+	&default_cfg, // Id = 9
+	&default_cfg, // Id = 10
+	&default_cfg, // Id = 11
+	&default_cfg, // Id = 12
+	&default_cfg, // Id = 13
+	&debug_cfg, // Id = 14
+	&module_cfg, // Id = 15 -> MASTER
 };
 
 /*
@@ -89,7 +101,7 @@ RadioCfg const *radio_cfg_table[] =
  */
 uint8_t radio_cfg_id(void)
 {
-	return stm32_gpioPinRead(((struct stm32_gpio *)GPIOB_BASE), BV(5) | BV(6)) >> 5;
+	return stm32_gpioPinRead(((struct stm32_gpio *)GPIOB_BASE), RADIO_ID) >> 5;
 }
 
 const RadioCfg *radio_cfg(int id)

@@ -35,8 +35,8 @@
 /*
  * Radio ids table.
  */
-#define RADIO_MASTER    0
-#define RADIO_DEBUG    3
+#define RADIO_MASTER    15
+#define RADIO_DEBUG     14
 
 typedef struct RadioCfg
 {
