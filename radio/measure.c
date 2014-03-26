@@ -176,9 +176,9 @@ int measure_ntc1(uint8_t *data, size_t len)
 int measure_light(uint8_t *data, size_t len)
 {
 	ASSERT(len >= sizeof(uint16_t));
-	uint16_t lin = measure_avg(3);
-	uint16_t l = (lin*47000) / (4096 - lin);
-	memcpy(data, &l, sizeof(uint16_t));
+	uint16_t lin = 4096 - measure_avg(3);
+	//uint16_t l = (lin*47000) / (4096 - lin);
+	memcpy(data, &lin, sizeof(uint16_t));
 	return 0;
 }
 
