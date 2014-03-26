@@ -74,6 +74,7 @@ static void init(void)
 	radio_timeout(&radio, 500);
 
 	cmd_init();
+	measure_init();
 }
 
 int main(void)
@@ -83,6 +84,15 @@ int main(void)
 	uint8_t id = radio_cfg_id();
 	LOG_INFO("%s [%d]\n", id == RADIO_MASTER
 						? "MASTER" : "SLAVE", id);
+
+	if (id == RADIO_DEBUG)
+	{
+		while (1)
+		{
+			protocol_encode(&radio, &proto);
+			timer_delay(500);
+		}
+	}
 
 	if (id == RADIO_MASTER)
 		protocol_init(master_cmd);
