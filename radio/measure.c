@@ -28,6 +28,7 @@
 #include "measure.h"
 
 #include "hw/hw_adc.h"
+#include "hw/hw_measure.h"
 
 #include <cfg/macros.h>
 
@@ -124,6 +125,15 @@ static const Table t[] = {
 };
 #endif
 
+static uint16_t measure_avg(int ch)
+{
+	uint32_t avg = 0;
+	for (int i = 0; i < 1024; i++)
+		avg += adc_read(ch);
+
+	return avg >> 10;
+}
+
 int measure_intTemp(uint8_t *data, size_t len)
 {
 	ASSERT(len >= sizeof(uint16_t));
@@ -144,9 +154,11 @@ int measure_intVref(uint8_t *data, size_t len)
 
 static void  measure_ntc(int ch, uint8_t *data, size_t len)
 {
-	ASSERT(len >= sizeof(int32_t));
-	int v = table_linearInterpolation(t, countof(t), adc_read(ch));
-	memcpy(data, &v, sizeof(int32_t));
+	ASSERT(len >= sizeof(int16_t));
+	uint16_t d = measure_avg(ch);
+
+	int v = table_linearInterpolation(t, countof(t), d);
+	memcpy(data, &v, sizeof(int16_t));
 }
 
 int measure_ntc0(uint8_t *data, size_t len)
@@ -159,5 +171,25 @@ int measure_ntc1(uint8_t *data, size_t len)
 {
 	measure_ntc(1, data, len);
 	return 0;
+}
+
+int measure_light(uint8_t *data, size_t len)
+{
+	ASSERT(len >= sizeof(uint16_t));
+	uint16_t lin = measure_avg(3);
+	uint16_t l = (lin*47000) / (4096 - lin);
+	memcpy(data, &l, sizeof(uint16_t));
+	return 0;
+}
+
+void measure_deInit(void)
+{
+	MEASURE_OFF();
+}
+
+void measure_init(void)
+{
+	MEASURE_INIT();
+	MEASURE_ON();
 }
 

@@ -36,6 +36,10 @@ int measure_intVref(uint8_t *data, size_t len);
 int measure_intTemp(uint8_t *data, size_t len);
 int measure_ntc0(uint8_t *data, size_t len);
 int measure_ntc1(uint8_t *data, size_t len);
+int measure_light(uint8_t *data, size_t len);
+
+void measure_deInit(void);
+void measure_init(void);
 
 #endif /* RADIO_MEASURE_H */
 

@@ -65,12 +65,23 @@ const RadioCfg module_cfg = {
 	},
 };
 
+const RadioCfg debug_cfg = {
+	"hHhhH", 5,
+	{
+		measure_intTemp,
+		measure_intVref,
+		measure_ntc0,
+		measure_ntc1,
+		measure_light,
+	},
+};
+
 RadioCfg const *radio_cfg_table[] =
 {
 	&module_cfg, // Id = 0 -> MASTER
 	&module_cfg, // Id = 1
 	&default_cfg, // Id = 2
-	&default_cfg, // Id = 3
+	&debug_cfg, // Id = 3
 };
 
 /*

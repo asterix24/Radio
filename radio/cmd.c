@@ -27,6 +27,7 @@
 
 #include "protocol.h"
 #include "radio_cfg.h"
+#include "measure.h"
 
 #include "hw/hw_pwr.h"
 
@@ -80,6 +81,7 @@ static void slave_shutdown(void)
 	uint32_t wup = rtc_time() + (uint32_t)CMD_TIME_TO_WAKEUP;
 	LOG_INFO("Go Standby, wakeup to %lds\n", wup);
 	rtc_setAlarm(wup);
+	measure_deInit();
 	go_standby();
 }
 
