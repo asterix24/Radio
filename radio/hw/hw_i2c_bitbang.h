@@ -41,7 +41,6 @@
 #ifndef HW_I2C_BITBANG_H
 #define HW_I2C_BITBANG_H
 
-#warning TODO:This is an example implementation, you must implement it!
 
 #define SDA_HI  do { /* Implement me:Set SDA High by setting SDA pin as input */ } while (0)
 #define SDA_LO  do { /* Implement me:Set SDA Low by setting SDA pin as open collector output */ } while (0)

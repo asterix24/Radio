@@ -31,6 +31,8 @@
 #include "cmd.h"
 #include "measure.h"
 
+#include "cfg/cfg_i2c.h"
+
 #include "hw/hw_cc1101.h"
 #include "hw/hw_adc.h"
 
@@ -51,12 +53,14 @@
 #include <drv/timer.h>
 #include <drv/adc.h>
 #include <drv/spi.h>
+#include <drv/i2c.h>
 #include <drv/rtc.h>
 
 #include <string.h>
 
 static Radio radio;
 static Protocol proto;
+static I2c i2c;
 
 static void init(void)
 {
@@ -67,7 +71,7 @@ static void init(void)
 
 	spi_init();
 	adc_init();
-
+	i2c_init(&i2c, I2C2, CONFIG_I2C_FREQ);
 
 	radio_cfg_init();
 	radio_init(&radio, ping_low_baud_868);
