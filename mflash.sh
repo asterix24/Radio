@@ -6,5 +6,6 @@ if [ $# -ge 1 ]; then
 	PORT=$1
 fi
 
-./stm32loader.py -p $PORT -w -e -v images/radio.bin
+#./stm32loader.py -p $PORT -w -e -v images/radio.bin
+stm32flash -w images/radio.bin -v $PORT -b 115200
 
