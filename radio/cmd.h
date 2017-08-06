@@ -58,9 +58,9 @@
  * Settings
  */
 #define CMD_DEVICES                  5
-#define CMD_TIME_TO_STANDBY         20 //s
-#define CMD_TIME_TO_WAKEUP          60 //s
-#define CMD_TIME_AFTER_ACK          10 //s
+#define CMD_TIME_TO_STANDBY         20   //s
+#define CMD_TIME_TO_WAKEUP          60*5 //s
+#define CMD_TIME_AFTER_ACK          10   //s
 
 struct Protocol;
 typedef int (*cmd_t)(KFile *fd, struct Protocol *proto);
