@@ -144,7 +144,7 @@ void protocol_decode(Radio *fd, Protocol *proto)
 		return;
 	}
 
-	kprintf("$%d;%d;%d;%ld;", proto->addr, fd->lqi, fd->rssi, proto->timestamp);
+	kprintf("$%d;%s;%d;%d;%ld;", proto->addr, cfg->label, fd->lqi, fd->rssi, proto->timestamp);
 	size_t index = 0;
 	for (size_t j = 0; j < cfg->fmt_len; j++)
 	{
