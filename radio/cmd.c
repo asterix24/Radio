@@ -47,7 +47,7 @@
 static int cmd_master_broadcast(KFile *_fd, Protocol *proto)
 {
 
-	LOG_INFO("Broadcast: type[%d]addr[%d]\n",
+	LOG_INFO("Broadcast: type[%d] addr[%d]\n",
 								proto->type, proto->addr);
 
 	Radio *fd = RADIO_CAST(_fd);
@@ -87,7 +87,7 @@ static void slave_shutdown(void)
 
 static int cmd_slave_sleep(KFile *fd, Protocol *proto)
 {
-	LOG_INFO("Sleep: type[%d]addr[%d]\n",
+	LOG_INFO("Sleep: type[%d] addr[%d]\n",
 							proto->type, proto->addr);
 
 	protocol_sendByte(fd, proto, proto->addr, proto->type, PROTO_ACK);
