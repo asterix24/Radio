@@ -49,7 +49,7 @@ const Cmd *proto_cmd;
 static cmd_t protocol_search(Protocol *proto)
 {
 	for (int i = 0; (proto_cmd[i].id != 0) &&
-				(proto_cmd[i].callback != NULL); i++)
+			(proto_cmd[i].callback != NULL); i++)
 		if (proto->type == proto_cmd[i].id)
 			return proto_cmd[i].callback;
 
@@ -83,7 +83,7 @@ int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type)
 }
 
 int protocol_sendByte(KFile *fd, Protocol *proto, uint8_t addr,
-										    uint8_t type, uint8_t data)
+		uint8_t type, uint8_t data)
 {
 	proto->len = sizeof(data);
 	memcpy(proto->data, &data, sizeof(data));
@@ -92,7 +92,7 @@ int protocol_sendByte(KFile *fd, Protocol *proto, uint8_t addr,
 }
 
 int protocol_sendBuf(KFile *fd, Protocol *proto, uint8_t addr,
-							uint8_t type, const uint8_t *data, size_t len)
+		uint8_t type, const uint8_t *data, size_t len)
 {
 	ASSERT(len < PROTO_DATALEN);
 	proto->len = len;
@@ -137,11 +137,14 @@ int protocol_poll(KFile *fd, Protocol *proto)
 void protocol_decode(Radio *fd, Protocol *proto)
 {
 	LOG_INFO("Decode len[%d]\n", proto->len);
-	uint8_t id = radio_cfg_id();
-	const RadioCfg *cfg = radio_cfg(id);
+	const RadioCfg *cfg = radio_cfg(proto->addr);
+
+	if (!cfg) {
+		LOG_ERR("Unable to decode package, no valid cfg found for given address[%d]", proto->addr);
+		return;
+	}
 
 	kprintf("$%d;%d;%d;%ld;", proto->addr, fd->lqi, fd->rssi, proto->timestamp);
-
 	size_t index = 0;
 	for (size_t j = 0; j < cfg->fmt_len; j++)
 	{
@@ -159,6 +162,7 @@ void protocol_decode(Radio *fd, Protocol *proto)
 		else if (cfg->fmt[j] == 'i')
 			DECODE(uint32_t, len, "%ld;");
 
+		//kprintf("\ntype[%c]index[%d]len[%d]fmtlen[%d]\n", cfg->fmt[j], index, len, cfg->fmt_len);
 		index += len;
 	}
 	kputs("\n");
@@ -201,9 +205,9 @@ void protocol_encode(Radio *fd, Protocol *proto)
 		else if (cfg->fmt[i] == 'H')
 			ENCODE(uint16_t, len, "%d;");   /* 'H': 2 byte unsigned */
 		else if (cfg->fmt[i] == 'i')
-			ENCODE(int32_t, len, "%ld;");   /* 'I': 4 byte unsigned */
+			ENCODE(int32_t, len, "%ld;");   /* 'i': 4 byte signed */
 		else if (cfg->fmt[i] == 'I')
-			ENCODE(uint32_t, len, "%ld;");  /* 'i': 4 byte unsigned */
+			ENCODE(uint32_t, len, "%ld;");  /* 'I': 4 byte unsigned */
 
 		index += len;
 		proto->len += len;
