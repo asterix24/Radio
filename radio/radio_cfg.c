@@ -29,6 +29,7 @@
 #include "measure.h"
 
 #include <cfg/macros.h>
+#include <cfg/debug.h>
 
 #include <io/stm32.h>
 
@@ -53,16 +54,29 @@ const RadioCfg default_cfg = {
 		measure_intTemp,
 		measure_intVref,
 	},
+	"SLAVE DEFAULT",
 };
 
-const RadioCfg module_cfg = {
-	"hHhh", 4,
+const RadioCfg master_cfg = {
+	"hHh", 3,
+	{
+		measure_intTemp,
+		measure_intVref,
+		measure_ntc1,
+	},
+	"MASTER 1ntc",
+};
+
+const RadioCfg module1_cfg = {
+	"hHhhH", 5,
 	{
 		measure_intTemp,
 		measure_intVref,
 		measure_ntc0,
 		measure_ntc1,
+		measure_light,
 	},
+	"SLAVE 2ntc res",
 };
 
 const RadioCfg debug_cfg = {
@@ -74,19 +88,20 @@ const RadioCfg debug_cfg = {
 		measure_ntc1,
 		measure_light,
 	},
+	"DEBUG MODE",
 };
 
 RadioCfg const *radio_cfg_table[] =
 {
-	&module_cfg,  // Id = 0 -> MASTER
-	&module_cfg,  // Id = 1
-	&module_cfg,  // Id = 2
+	&master_cfg,  // Id = 0 -> MASTER
+	&module1_cfg,  // Id = 1
+	&default_cfg,  // Id = 2
 	&default_cfg, // Id = 3
 	&default_cfg, // Id = 4
 	&default_cfg, // Id = 5
 	&default_cfg, // Id = 6
 	&default_cfg, // Id = 7
-	&default_cfg, // Id = 8
+	&module1_cfg,  // Id = 8
 	&default_cfg, // Id = 9
 	&default_cfg, // Id = 10
 	&default_cfg, // Id = 11
@@ -101,7 +116,8 @@ RadioCfg const *radio_cfg_table[] =
  */
 uint8_t radio_cfg_id(void)
 {
-	return (0xFF - (stm32_gpioPinRead(((struct stm32_gpio *)GPIOB_BASE), RADIO_ID) >> 5));
+	uint16_t id = stm32_gpioPinRead(((struct stm32_gpio *)GPIOB_BASE), RADIO_ID);
+	return (0xF - (id >> 5));
 }
 
 const RadioCfg *radio_cfg(int id)

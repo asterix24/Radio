@@ -43,6 +43,7 @@ typedef struct RadioCfg
 	uint8_t fmt[10];
 	size_t fmt_len;
 	measure_t callbacks[10];
+	uint8_t label[15];
 } RadioCfg;
 
 const RadioCfg *radio_cfg(int id);

@@ -86,8 +86,8 @@ int main(void)
 	init();
 	/* Send first broadcast message with us configuration */
 	uint8_t id = radio_cfg_id();
-	LOG_INFO("%s [%d]\n", id == RADIO_MASTER
-						? "MASTER" : "SLAVE", id);
+	const RadioCfg *cfg = radio_cfg(id);
+	LOG_INFO("Module MODE[%s]\n", cfg->label);
 
 	if (id == RADIO_DEBUG)
 	{
