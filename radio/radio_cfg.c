@@ -54,7 +54,7 @@ const RadioCfg default_cfg = {
 		measure_intTemp,
 		measure_intVref,
 	},
-	"SLAVE DEFAULT",
+	"Module Default",
 };
 
 const RadioCfg master_cfg = {
@@ -64,7 +64,7 @@ const RadioCfg master_cfg = {
 		measure_intVref,
 		measure_ntc1,
 	},
-	"MASTER 1ntc",
+	"MASTER",
 };
 
 const RadioCfg module1_cfg = {
@@ -76,7 +76,18 @@ const RadioCfg module1_cfg = {
 		measure_ntc1,
 		measure_light,
 	},
-	"SLAVE 2ntc res",
+	"Module 1",
+};
+
+const RadioCfg module2_cfg = {
+	"hHhh", 4,
+	{
+		measure_intTemp,
+		measure_intVref,
+		measure_ntc0,
+		measure_ntc1,
+	},
+	"Module 2",
 };
 
 const RadioCfg debug_cfg = {
@@ -95,7 +106,7 @@ RadioCfg const *radio_cfg_table[] =
 {
 	&master_cfg,  // Id = 0 -> MASTER
 	&module1_cfg,  // Id = 1
-	&default_cfg,  // Id = 2
+	&module2_cfg,  // Id = 2
 	&default_cfg, // Id = 3
 	&default_cfg, // Id = 4
 	&default_cfg, // Id = 5
