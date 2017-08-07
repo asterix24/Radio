@@ -7,5 +7,5 @@ if [ $# -ge 1 ]; then
 fi
 
 #./stm32loader.py -p $PORT -w -e -v images/radio.bin
-stm32flash -w images/radio.bin -v $PORT -b 115200
+stm32flash -w images/radio.bin -b 115200 $PORT
 
