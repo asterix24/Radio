@@ -87,7 +87,7 @@ int main(void)
 	/* Send first broadcast message with us configuration */
 	uint8_t id = radio_cfg_id();
 	const RadioCfg *cfg = radio_cfg(id);
-	LOG_INFO("Module MODE[%s]\n", cfg->label);
+	LOG_INFO("Module %s [%d]\n", cfg->label, id);
 
 	if (id == RADIO_DEBUG)
 	{
