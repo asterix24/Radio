@@ -41,29 +41,23 @@
 #include <cfg/macros.h>
 #include <io/stm32.h>
 
-#define MEASURE_SWITCH   BV(13)  // PC13 --> P21
-#warning Collega a modo le ntc sulla scheda master.
-#define MEASURE_NTC01    BV(3)  // PA3 --> P28; Questo e' solo per la carrier master TODO: da tolgiere!
+#define MEASURE_SWITCH   BV(13)         // PC13 --> P21
 
 
 #define MEASURE_ON()   \
 	do { \
-		stm32_gpioPinWrite(((struct stm32_gpio *)GPIOC_BASE), MEASURE_SWITCH, 1); \
-		stm32_gpioPinWrite(((struct stm32_gpio *)GPIOA_BASE), MEASURE_NTC01, 1); \
+		stm32_gpioPinWrite(((struct stm32_gpio *)GPIOC_BASE), MEASURE_SWITCH, 0); \
 	} while(0)
 
 #define MEASURE_OFF()  \
 	do { \
-		stm32_gpioPinWrite(((struct stm32_gpio *)GPIOC_BASE), MEASURE_SWITCH, 0); \
-		stm32_gpioPinWrite(((struct stm32_gpio *)GPIOA_BASE), MEASURE_NTC01, 0); \
+		stm32_gpioPinWrite(((struct stm32_gpio *)GPIOC_BASE), MEASURE_SWITCH, 1); \
 	} while(0)
 
 #define MEASURE_INIT() \
 	do { \
 		RCC->APB2ENR |= RCC_APB2_GPIOC; \
 		stm32_gpioPinConfig(((struct stm32_gpio *)GPIOC_BASE), MEASURE_SWITCH, GPIO_MODE_OUT_PP, GPIO_SPEED_50MHZ);\
-		RCC->APB2ENR |= RCC_APB2_GPIOA; \
-		stm32_gpioPinConfig(((struct stm32_gpio *)GPIOA_BASE), MEASURE_NTC01, GPIO_MODE_OUT_PP, GPIO_SPEED_50MHZ);\
 	} while(0)
 
 #endif /* HW_MEASURE_H */
