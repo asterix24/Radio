@@ -38,65 +38,141 @@
 
 #include "mpl3115a2.h"
 
+/* Define logging setting (for cfg/log.h module). */
+#define LOG_LEVEL         3
+#define LOG_FORMAT        0
+#include <cfg/log.h>
+#include <cfg/debug.h>
 #include <drv/timer.h>
+
+static int mpl3115a2_writeReg(I2c *i2c, uint8_t reg, uint8_t data)
+{
+	i2c_start_w(i2c, MPL3115A2_ADDR, 2, I2C_STOP);
+	i2c_putc(i2c, reg);
+	i2c_putc(i2c, data);
+
+	if (i2c_error(i2c))
+		return -1;
+
+	return 0;
+}
+
+static int mpl3115a2_readReg(I2c *i2c, uint8_t reg, uint8_t *data)
+{
+	i2c_start_w(i2c, MPL3115A2_ADDR, 1, I2C_NOSTOP);
+	i2c_putc(i2c, reg);
+	i2c_start_r(i2c, MPL3115A2_ADDR, 1, I2C_STOP);
+	*data = i2c_getc(i2c);
+
+	if (i2c_error(i2c))
+		return -1;
+
+	return 0;
+}
+
+int mlp3115a2_readPressure(I2c *i2c, int32_t *pressure, uint8_t *pressure_fract)
+{
+
+	ticks_t start = timer_clock();
+	do {
+		uint8_t status = 0;
+		if (mpl3115a2_readReg(i2c, MPL3115A2_STATUS, &status) < 0) {
+			LOG_ERR("Unable to read from sensor\n");
+			continue;
+		}
+
+		if (status && 0x8)
+		{
+			uint8_t p_msb = 0;
+			if (mpl3115a2_readReg(i2c, MPL3115A2_OUT_P_MSB, &p_msb) < 0) {
+				LOG_ERR("Unable to read from sensor\n");
+				continue;
+			}
+
+			uint8_t p_csb = 0;
+			if (mpl3115a2_readReg(i2c, MPL3115A2_OUT_P_CSB, &p_csb) < 0) {
+				LOG_ERR("Unable to read from sensor\n");
+				continue;
+			}
+
+			uint8_t p_lsb = 0;
+			if (mpl3115a2_readReg(i2c, MPL3115A2_OUT_P_LSB, &p_lsb) < 0) {
+				LOG_ERR("Unable to read from sensor\n");
+				continue;
+			}
+
+			*pressure = ((p_msb << 8 | p_csb) << 2) | p_lsb >> 6;
+			*pressure_fract = (p_lsb >> 4) & 0x3;
+
+			LOG_INFO("Pressure[%ld.%d]\n", *pressure, *pressure_fract);
+			return 0;
+		}
+	} while ((timer_clock() - start) < ms_to_ticks(MPL3115A2_READ_TIMEOUT));
+
+	LOG_ERR("Timeout! Unable to get pressure from sensor\n");
+	return -1;
+}
+
+int mlp3115a2_readTemp(I2c *i2c, int16_t *temp, uint8_t *temp_fract)
+{
+	ticks_t start = timer_clock();
+	do {
+		uint8_t status = 0;
+		if (mpl3115a2_readReg(i2c, MPL3115A2_STATUS, &status) < 0) {
+			LOG_ERR("Unable to read from sensor\n");
+			continue;
+		}
+
+		if (status && 0x8)
+		{
+			uint8_t t_msb = 0;
+			if (mpl3115a2_readReg(i2c, MPL3115A2_OUT_T_MSB, &t_msb) < 0) {
+				LOG_ERR("Unable to read from sensor\n");
+				continue;
+			}
+
+			uint8_t t_lsb = 0;
+			if (mpl3115a2_readReg(i2c, MPL3115A2_OUT_T_LSB, &t_lsb) < 0) {
+				LOG_ERR("Unable to read from sensor\n");
+				continue;
+			}
+
+			*temp = t_msb;
+			*temp_fract = t_lsb >> 4;
+
+			LOG_INFO("Temp[%d.%d]\n", *temp, *temp_fract);
+			return 0;
+		}
+	} while ((timer_clock() - start) < ms_to_ticks(MPL3115A2_READ_TIMEOUT));
+
+	LOG_ERR("Timeout! Unable to get temp from sensor\n");
+	return -1;
+}
+
+struct MPL3115A2_CFG {
+	uint8_t reg;
+	uint8_t data;
+};
+
+static struct MPL3115A2_CFG mpl3115a2_cfg[] = {
+	{ MPL3115A2_CTRL1,        0x38 },
+	{ MPL3115A2_PT_DATA_CFG,  0x07 },
+	{ MPL3115A2_CTRL1,        0x39 },
+	{ 0x00,                   0x00 },
+};
 
 void mpl3115a2_init(I2c *i2c)
 {
-	i2c_start_w(i2c, MPL3115A2_ADDR, 2, I2C_STOP);
-	i2c_putc(i2c, MPL3115A2_CTRL1);
-	i2c_putc(i2c, 0x38);
+	kputs("start\n");
 
-	i2c_start_w(i2c, MPL3115A2_ADDR, 2, I2C_STOP);
-	i2c_putc(i2c, MPL3115A2_PT_DATA_CFG);
-	i2c_putc(i2c, 0x07);
+	for (int i = 0;; i++)
+	{
+		if (!mpl3115a2_cfg[i].reg && !mpl3115a2_cfg[i].data)
+			break;
 
-	i2c_start_w(i2c, MPL3115A2_ADDR, 2, I2C_STOP);
-	i2c_putc(i2c, MPL3115A2_CTRL1);
-	i2c_putc(i2c, 0x39);
-
-
-	while (1) {
-		i2c_start_w(i2c, MPL3115A2_ADDR, 1, I2C_NOSTOP);
-		i2c_putc(i2c, 0x0);
-		i2c_start_r(i2c, MPL3115A2_ADDR, 1, I2C_STOP);
-		uint8_t status = i2c_getc(i2c);
-		if (status && 0x8)
-		{
-			int32_t pressure = 0;
-			uint8_t frac_pressure = 0;
-			int16_t temp = 0;
-			uint8_t frac_temp = 0;
-
-			i2c_start_w(i2c, MPL3115A2_ADDR, 1, I2C_NOSTOP);
-			i2c_putc(i2c, 0x1);
-			i2c_start_r(i2c, MPL3115A2_ADDR, 1, I2C_STOP);
-			uint8_t p_msb = i2c_getc(i2c);
-
-			i2c_start_w(i2c, MPL3115A2_ADDR, 1, I2C_NOSTOP);
-			i2c_putc(i2c, 0x2);
-			i2c_start_r(i2c, MPL3115A2_ADDR, 1, I2C_STOP);
-			uint8_t p_csb = i2c_getc(i2c);
-
-			i2c_start_w(i2c, MPL3115A2_ADDR, 1, I2C_NOSTOP);
-			i2c_putc(i2c, 0x3);
-			i2c_start_r(i2c, MPL3115A2_ADDR, 1, I2C_STOP);
-			uint8_t p_lsb = i2c_getc(i2c);
-
-			pressure = ((p_msb << 8 | p_csb) << 2) | p_lsb >> 6;
-			frac_pressure = (p_lsb >> 4) & 0x3;
-
-			i2c_start_w(i2c, MPL3115A2_ADDR, 1, I2C_NOSTOP);
-			i2c_putc(i2c, 0x4);
-			i2c_start_r(i2c, MPL3115A2_ADDR, 1, I2C_STOP);
-			temp = i2c_getc(i2c);
-
-			i2c_start_w(i2c, MPL3115A2_ADDR, 1, I2C_NOSTOP);
-			i2c_putc(i2c, 0x5);
-			i2c_start_r(i2c, MPL3115A2_ADDR, 1, I2C_STOP);
-			frac_temp = i2c_getc(i2c) >> 4;
-
-			kprintf("Temp[%d.%d] pressure[%ld.%d]\n", temp, frac_temp, pressure, frac_pressure);
-		}
-		timer_delay(300);
+		int ret = mpl3115a2_writeReg(i2c, mpl3115a2_cfg[i].reg, mpl3115a2_cfg[i].data);
+		if (ret < 0)
+			LOG_ERR("Unable to write mpl3115a configuration [%i]\n", i);
 	}
+
 }

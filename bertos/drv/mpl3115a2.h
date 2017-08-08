@@ -47,9 +47,21 @@
 
 #define MPL3115A2_ADDR        0xC0
 
-#define MPL3115A2_CTRL1       0x26
+#define MPL3115A2_STATUS      0x00
+#define MPL3115A2_OUT_P_MSB   0x01
+#define MPL3115A2_OUT_P_CSB   0x02
+#define MPL3115A2_OUT_P_LSB   0x03
+#define MPL3115A2_OUT_T_MSB   0x04
+#define MPL3115A2_OUT_T_LSB   0x05
+
 #define MPL3115A2_PT_DATA_CFG 0x13
 
+#define MPL3115A2_CTRL1       0x26
+
+#define MPL3115A2_READ_TIMEOUT  500 //ms
+
 void mpl3115a2_init(I2c *i2c);
+int mlp3115a2_readPressure(I2c *i2c, int32_t *pressure, uint8_t *pressure_fract);
+int mlp3115a2_readTemp(I2c *i2c, int16_t *temp, uint8_t *temp_fract);
 
 #endif /* DRV_MPL3115A2 */
