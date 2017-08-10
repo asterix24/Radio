@@ -34,7 +34,7 @@
 #include <cfg/debug.h>
 
 // Define logging setting (for cfg/log.h module).
-#define LOG_LEVEL   3
+#define LOG_LEVEL   2
 #define LOG_FORMAT  0
 
 #include <cfg/log.h>

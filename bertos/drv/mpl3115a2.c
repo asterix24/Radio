@@ -163,7 +163,7 @@ static struct MPL3115A2_CFG mpl3115a2_cfg[] = {
 
 void mpl3115a2_init(I2c *i2c)
 {
-	kputs("start\n");
+	LOG_INFO("Init pressure sensor.\n");
 
 	for (int i = 0;; i++)
 	{

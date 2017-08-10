@@ -40,6 +40,8 @@
 
 #include <cfg/macros.h>
 #include <io/stm32.h>
+#include <drv/gpio_stm32.h>
+#include <drv/clock_stm32.h>
 
 #define MEASURE_SWITCH          BV(13) // PC13 --> P21
 #define MEASURE_SWITCH_MASTER   BV(9)  // PB9 --> P20

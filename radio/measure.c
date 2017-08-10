@@ -36,9 +36,9 @@
 
 #include <cpu/types.h>
 
-#include <drv/gpio_stm32.h>
-#include <drv/clock_stm32.h>
 #include <drv/rtc.h>
+#include <drv/i2c.h>
+#include <drv/mpl3115a2.h>
 
 #include <algo/table.h>
 
@@ -125,71 +125,37 @@ static const Table t[] = {
 };
 #endif
 
-static uint16_t measure_avg(int ch)
-{
-	uint32_t avg = 0;
-	for (int i = 0; i < 1024; i++)
-		avg += adc_read(ch);
+static I2c i2c;
 
-	return avg >> 10;
-}
-
-int measure_intTemp(uint8_t *data, size_t len)
-{
-	ASSERT(len >= sizeof(uint16_t));
-	uint16_t t = hw_readIntTemp();
-	memcpy(data, &t, sizeof(uint16_t));
-
-	return 0;
-}
-
-int measure_intVref(uint8_t *data, size_t len)
-{
-	ASSERT(len >= sizeof(uint16_t));
-	uint16_t v = hw_readVrefint();
-	memcpy(data, &v, sizeof(uint16_t));
-
-	return 0;
-}
-
-static void  measure_ntc(int ch, uint8_t *data, size_t len)
+int measure_ntc(int ch, uint8_t *data, size_t len)
 {
 	ASSERT(len >= sizeof(int16_t));
-	uint16_t d = measure_avg(ch);
+	uint16_t d = adc_read(ch);
 
 	int v = table_linearInterpolation(t, countof(t), d);
 	memcpy(data, &v, sizeof(int16_t));
-}
 
-int measure_ntc0(uint8_t *data, size_t len)
-{
-	measure_ntc(0, data, len);
 	return 0;
 }
 
-int measure_ntc1(uint8_t *data, size_t len)
-{
-	measure_ntc(1, data, len);
-	return 0;
-}
-
-int measure_light(uint8_t *data, size_t len)
-{
-	ASSERT(len >= sizeof(uint16_t));
-	uint16_t lin = 4096 - measure_avg(3);
-	//uint16_t l = (lin*47000) / (4096 - lin);
-	memcpy(data, &lin, sizeof(uint16_t));
-	return 0;
-}
-
-void measure_deInit(void)
-{
-	MEASURE_OFF();
-}
-
-void measure_init(void)
+void measure_init(int cfg)
 {
 	MEASURE_INIT();
 	MEASURE_ON();
+
+	if (cfg & MEAS_ADC)
+		adc_init();
+
+	if (cfg & MEAS_I2C)
+	{
+		i2c_init(&i2c, I2C2, CONFIG_I2C_FREQ);
+		mpl3115a2_init(&i2c);
+		int16_t temp = 0;
+		uint8_t temp_fract = 0;
+		mlp3115a2_readTemp(&i2c, &temp, &temp_fract);
+		int32_t press;
+		uint8_t press_fract;
+		mlp3115a2_readPressure(&i2c, &press, &press_fract);
+	}
 }
 

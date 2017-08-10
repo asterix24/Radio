@@ -28,7 +28,12 @@
 #ifndef RADIO_MEASURE_H
 #define RADIO_MEASURE_H
 
+#include "hw/hw_adc.h"
+#include "hw/hw_measure.h"
+
 #include <cpu/types.h>
+
+#include <string.h>
 
 #define MEAS_INT_TEMP      BV(0)
 #define MEAS_INT_VREF      BV(1)
@@ -38,18 +43,61 @@
 #define MEAS_PRESSURE      BV(5)
 #define MEAS_PRESS_TEMP    BV(6)
 
+
+#define MEAS_ADC   ( MEAS_INT_TEMP | \
+                     MEAS_INT_VREF | \
+                     MEAS_NTC_CH0  | \
+                     MEAS_NTC_CH1  | \
+                     MEAS_PHOTO_CH3)
+
+#define MEAS_I2C   (  MEAS_PRESSURE | \
+                      MEAS_PRESS_TEMP )
+
 #define MEAS_ALL           0x3F
 
-typedef int (*measure_t)(uint8_t *data, size_t len);
+INLINE int measure_intTemp(uint8_t *data, size_t len)
+{
+	(void)len;
+	uint16_t t = hw_readIntTemp();
+	memcpy(data, &t, sizeof(uint16_t));
+	return 0;
+}
 
-int measure_intVref(uint8_t *data, size_t len);
-int measure_intTemp(uint8_t *data, size_t len);
-int measure_ntc0(uint8_t *data, size_t len);
-int measure_ntc1(uint8_t *data, size_t len);
-int measure_light(uint8_t *data, size_t len);
+INLINE int measure_intVref(uint8_t *data, size_t len)
+{
+	(void)len;
+	uint16_t v = hw_readVrefint();
+	memcpy(data, &v, sizeof(uint16_t));
+	return 0;
+}
 
-void measure_deInit(void);
-void measure_init(void);
+int measure_ntc(int ch, uint8_t *data, size_t len);
+
+INLINE int measure_ntc0(uint8_t *data, size_t len)
+{
+	return measure_ntc(0, data, len);
+}
+
+INLINE int measure_ntc1(uint8_t *data, size_t len)
+{
+	return measure_ntc(1, data, len);
+}
+
+
+INLINE int measure_light(uint8_t *data, size_t len)
+{
+	(void)len;
+	uint16_t lin = adc_read(3);
+	memcpy(data, &lin, sizeof(uint16_t));
+	return 0;
+}
+
+INLINE void measure_deInit(void)
+{
+	MEASURE_OFF();
+}
+
+void measure_init(int cfg);
 
 #endif /* RADIO_MEASURE_H */
 

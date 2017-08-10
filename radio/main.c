@@ -53,14 +53,12 @@
 #include <drv/timer.h>
 #include <drv/adc.h>
 #include <drv/spi.h>
-#include <drv/i2c.h>
 #include <drv/rtc.h>
 
 #include <string.h>
 
 static Radio radio;
 static Protocol proto;
-static I2c i2c;
 
 static void init(void)
 {
@@ -70,15 +68,9 @@ static void init(void)
 	rtc_init();
 
 	spi_init();
-	adc_init();
-	i2c_init(&i2c, I2C2, CONFIG_I2C_FREQ);
-
 	radio_cfg_init();
 	radio_init(&radio, ping_low_baud_868);
 	radio_timeout(&radio, 500);
-
-	cmd_init();
-	measure_init();
 }
 
 int main(void)
@@ -86,8 +78,12 @@ int main(void)
 	init();
 	/* Send first broadcast message with us configuration */
 	uint8_t id = radio_cfg_id();
-	const RadioCfg *cfg = radio_cfg(id);
-	LOG_INFO("Module %s [%d]\n", cfg->label, id);
+	int cfg = radio_cfg(id);
+	ASSERT(cfg >= 0);
+	LOG_INFO("Module [%d] cfg[%x]\n", id, cfg);
+
+	measure_init(cfg);
+	cmd_init();
 
 	if (id == RADIO_DEBUG)
 	{
@@ -106,7 +102,6 @@ int main(void)
 	while (1)
 	{
 		//kprintf("%ld\n", rtc_time());
-
 		protocol_poll(&radio.fd, &proto);
 		cmd_poll(id, &radio.fd, &proto);
 	}
