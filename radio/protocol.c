@@ -126,55 +126,48 @@ int protocol_poll(KFile *fd, Protocol *proto)
 }
 
 
-#define DECODE(T, len, fmt) \
+#define DECODE(msg, cfg, mask, T, index, fmt) \
 	do { \
-		T tmp; \
-		(len) = sizeof(T); \
-		memcpy(&tmp, &proto->data[index], len); \
-		kprintf((fmt), tmp); \
+		if ((cfg) & (mask)) { \
+			T tmp; \
+			memcpy(&tmp, &(msg)->data[index], sizeof(T)); \
+			(index) += sizeof(T); \
+			kprintf((fmt), tmp); \
+		} \
 	} while (0)
 
 void protocol_decode(Radio *fd, Protocol *proto)
 {
-	LOG_INFO("Decode len[%d]\n", proto->len);
-	const RadioCfg *cfg = radio_cfg(proto->addr);
-
-	if (!cfg) {
-		LOG_ERR("Unable to decode package, no valid cfg found for given address[%d]", proto->addr);
+	int cfg = radio_cfg(proto->addr);
+	if (cfg < 0) {
+		LOG_ERR("Unable to decode package, no valid cfg found for given address[%d]", \
+				proto->addr);
 		return;
 	}
 
-	kprintf("$%d;%s;%d;%d;%ld;", proto->addr, cfg->label, fd->lqi, fd->rssi, proto->timestamp);
+	LOG_INFO("Decode len[%d] addr[%d] cfg[%x]\n", proto->len, proto->addr, cfg);
+	kprintf("$%d;%d;%d;%ld;", proto->addr, fd->lqi, fd->rssi, proto->timestamp);
+
 	size_t index = 0;
-	for (size_t j = 0; j < cfg->fmt_len; j++)
-	{
-		if (index >= proto->len)
-			break;
+	DECODE(proto, cfg, MEAS_INT_TEMP,  int16_t,  index, "%d;");
+	DECODE(proto, cfg, MEAS_INT_VREF,  uint16_t, index, "%d;");
+	DECODE(proto, cfg, MEAS_NTC_CH0,   int16_t,  index, "%d;");
+	DECODE(proto, cfg, MEAS_NTC_CH1,   int16_t,  index, "%d;");
+	DECODE(proto, cfg, MEAS_PHOTO_CH3, uint16_t, index, "%d;");
 
-		size_t len = 0;
-
-		if (cfg->fmt[j] == 'h')
-			DECODE(int16_t, len, "%d;");
-		else if (cfg->fmt[j] == 'H')
-			DECODE(uint16_t, len, "%d;");
-		else if (cfg->fmt[j] == 'I')
-			DECODE(int32_t, len, "%ld;");
-		else if (cfg->fmt[j] == 'i')
-			DECODE(uint32_t, len, "%ld;");
-
-		//kprintf("\ntype[%c]index[%d]len[%d]fmtlen[%d]\n", cfg->fmt[j], index, len, cfg->fmt_len);
-		index += len;
-	}
 	kputs("\n");
 }
 
-#define ENCODE(T, len, fmt) \
+#define ENCODE(msg, cfg, mask, callback, T, index, fmt) \
 	do { \
-		T tmp; \
-		(len) = sizeof(T); \
-		cfg->callbacks[i]((uint8_t *)&tmp, (len)); \
-		memcpy(&proto->data[index], (uint8_t *)&tmp,(len)); \
-		kprintf((fmt), tmp); \
+		if ((cfg) & (mask)) { \
+			T tmp; \
+			(callback)((uint8_t *)&tmp, sizeof(T)); \
+			memcpy(&(msg)->data[index], (uint8_t *)&tmp,sizeof(T)); \
+			(index) += sizeof(T); \
+			(msg)->len += sizeof(T); \
+			kprintf((fmt), tmp); \
+		} \
 	} while (0)
 
 void protocol_encode(Radio *fd, Protocol *proto)
@@ -182,10 +175,7 @@ void protocol_encode(Radio *fd, Protocol *proto)
 	(void)fd;
 	LOG_INFO("Encode data\n");
 	uint8_t id = radio_cfg_id();
-	const RadioCfg *cfg = radio_cfg(id);
-
-	ASSERT(cfg);
-
+	int cfg = radio_cfg(id);
 
 	memset(proto, 0, sizeof(Protocol));
 
@@ -193,28 +183,13 @@ void protocol_encode(Radio *fd, Protocol *proto)
 	kprintf("$%d;0;0;%ld;", id, proto->timestamp);
 
 	size_t index = 0;
-	for (size_t i = 0; i < cfg->fmt_len; i++)
-	{
-		ASSERT(cfg->callbacks[i]);
-		ASSERT(index < PROTO_DATALEN);
-
-		size_t len = 0;
-
-		if (cfg->fmt[i] == 'h')
-			ENCODE(int16_t, len, "%d;");   /* 'h': 2 byte signed */
-		else if (cfg->fmt[i] == 'H')
-			ENCODE(uint16_t, len, "%d;");   /* 'H': 2 byte unsigned */
-		else if (cfg->fmt[i] == 'i')
-			ENCODE(int32_t, len, "%ld;");   /* 'i': 4 byte signed */
-		else if (cfg->fmt[i] == 'I')
-			ENCODE(uint32_t, len, "%ld;");  /* 'I': 4 byte unsigned */
-
-		index += len;
-		proto->len += len;
-	}
+	ENCODE(proto, cfg, MEAS_INT_TEMP,  measure_intTemp,  int16_t,  index, "%d;");
+	ENCODE(proto, cfg, MEAS_INT_VREF,  measure_intVref,  uint16_t, index, "%d;");
+	ENCODE(proto, cfg, MEAS_NTC_CH0,   measure_ntc0,     int16_t,  index, "%d;");
+	ENCODE(proto, cfg, MEAS_NTC_CH1,   measure_ntc1,     int16_t,  index, "%d;");
+	ENCODE(proto, cfg, MEAS_PHOTO_CH3, measure_light,    uint16_t, index, "%d;");
 
 	kputs("\n");
-
 }
 
 void protocol_updateRot(Protocol *proto)

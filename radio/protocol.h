@@ -48,20 +48,6 @@
 #define PROTO_WRONG_ADDR    -2
 #define PROTO_TIMEOUT       -3
 
-/*
- * Protocol data format.
- * The data should be sent in packed format, the allow type are:
- *
- * c: char 8bit
- * b: signed char 8bit
- * B: unsigned char 8bit
- * h: short 16bit
- * H: unsigned short 16bit
- * i: int 32bit
- * I: unsigned int 32bit
- * ...
- */
-
 typedef struct Protocol
 {
 	uint8_t type;
