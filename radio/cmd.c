@@ -114,19 +114,18 @@ static int cmd_slave_broadcast(KFile *fd, Protocol *proto)
 
 
 const Cmd slave_cmd[] = {
-	{ CMD_BROADCAST, cmd_slave_broadcast },
+	{ CMD_BROADCAST, cmd_slave_broadcast  },
 	{ CMD_SLEEP,     cmd_slave_sleep      },
-	{ 0     , NULL }
+	{ 0,             NULL                 }
 };
 
 static void cmd_slavePoll(KFile *_fd, Protocol *proto)
 {
 	int time = elapse_time - rtc_time();
-
 	Radio *fd = RADIO_CAST(_fd);
 
 	/*
-	 * If measure are the same from last wakeup, we go to sleep,
+	 * If all measure aren't changed from last wakeup, we go to sleep,
 	 * to preserve battery
 	 */
 	if (slave_status == CMD_SLAVE_STATUS_START)
