@@ -30,6 +30,16 @@
 
 #include <cpu/types.h>
 
+#define MEAS_INT_TEMP      BV(0)
+#define MEAS_INT_VREF      BV(1)
+#define MEAS_NTC_CH0       BV(2)
+#define MEAS_NTC_CH1       BV(3)
+#define MEAS_PHOTO_CH3     BV(4)
+#define MEAS_PRESSURE      BV(5)
+#define MEAS_PRESS_TEMP    BV(6)
+
+#define MEAS_ALL           0x3F
+
 typedef int (*measure_t)(uint8_t *data, size_t len);
 
 int measure_intVref(uint8_t *data, size_t len);
