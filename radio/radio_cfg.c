@@ -48,78 +48,26 @@
                     RADIO_CFG_ID2 | \
                     RADIO_CFG_ID3)
 
-const RadioCfg default_cfg = {
-	"hH", 2,
-	{
-		measure_intTemp,
-		measure_intVref,
-	},
-	"Module Default",
-};
 
-const RadioCfg master_cfg = {
-	"hHh", 3,
-	{
-		measure_intTemp,
-		measure_intVref,
-		measure_ntc1,
-	},
-	"MASTER",
-};
 
-const RadioCfg module1_cfg = {
-	"hHhhH", 5,
-	{
-		measure_intTemp,
-		measure_intVref,
-		measure_ntc0,
-		measure_ntc1,
-		measure_light,
-	},
-	"Module 1",
-};
-
-const RadioCfg module2_cfg = {
-	"hHhh", 4,
-	{
-		measure_intTemp,
-		measure_intVref,
-		measure_ntc0,
-		measure_ntc1,
-	},
-	"Module 2",
-};
-
-const RadioCfg debug_cfg = {
-	"hHhhH", 5,
-	{
-		measure_intTemp,
-		measure_intVref,
-		measure_ntc0,
-		measure_ntc1,
-		measure_light,
-	},
-	"DEBUG MODE",
-};
-
-RadioCfg const *radio_cfg_table[] =
+const uint16_t radio_cfg_table[] =
 {
-	&master_cfg,  // Id = 0 -> MASTER
-	&module1_cfg,  // Id = 1
-	&module2_cfg,  // Id = 2
-	&default_cfg, // Id = 3
-	&default_cfg, // Id = 4
-	&default_cfg, // Id = 5
-	&default_cfg, // Id = 6
-	&default_cfg, // Id = 7
-	&module1_cfg,  // Id = 8
-	&default_cfg, // Id = 9
-	&default_cfg, // Id = 10
-	&default_cfg, // Id = 11
-	&default_cfg, // Id = 12
-	&default_cfg, // Id = 13
-	&default_cfg, // Id = 14
-	&debug_cfg,   // Id = 15
+	MEAS_INT_TEMP | MEAS_INT_VREF | MEAS_NTC_CH1,  // Id = 0 -> MASTER
+	MEAS_INT_TEMP | MEAS_INT_VREF, // Id = 1
+	MEAS_INT_TEMP | MEAS_INT_VREF | MEAS_NTC_CH0 | MEAS_NTC_CH1 | MEAS_PHOTO_CH3 | MEAS_PRESSURE | MEAS_PRESS_TEMP, // Id = 2
+	MEAS_INT_TEMP | MEAS_INT_VREF, // Id = 3
+	MEAS_INT_TEMP | MEAS_INT_VREF, // Id = 4
+	MEAS_INT_TEMP | MEAS_INT_VREF, // Id = 5
+	MEAS_INT_TEMP | MEAS_INT_VREF, // Id = 6
+	MEAS_INT_TEMP | MEAS_INT_VREF, // Id = 7
+	MEAS_INT_TEMP | MEAS_INT_VREF | MEAS_NTC_CH0 | MEAS_NTC_CH1 | MEAS_PHOTO_CH3 | MEAS_PRESSURE | MEAS_PRESS_TEMP, // Id = 8
+	MEAS_INT_TEMP | MEAS_INT_VREF, // Id = 9
+	MEAS_INT_TEMP | MEAS_INT_VREF, // Id = 10
+	MEAS_INT_TEMP | MEAS_INT_VREF, // Id = 11
+	MEAS_INT_TEMP | MEAS_INT_VREF, // Id = 12
+	MEAS_INT_TEMP | MEAS_INT_VREF, // Id = 13
+	MEAS_INT_TEMP | MEAS_INT_VREF, // Id = 14
+	MEAS_ALL                       // Id = 15 -> DEBUG MODE
 };
 
 /*
@@ -131,11 +79,10 @@ uint8_t radio_cfg_id(void)
 	return (0xF - (id >> 5));
 }
 
-const RadioCfg *radio_cfg(int id)
+int radio_cfg(int id)
 {
-
 	if ((size_t)id >= countof(radio_cfg_table))
-		return NULL;
+		return -1;
 
 	return radio_cfg_table[id];
 }
