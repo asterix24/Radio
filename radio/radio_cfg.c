@@ -35,18 +35,6 @@
 
 #include <cpu/types.h>
 
-#include <drv/gpio_stm32.h>
-#include <drv/clock_stm32.h>
-
-#define RADIO_CFG_ID0   BV(5)  // PB5 -> P16
-#define RADIO_CFG_ID1   BV(6)  // PB6 -> P17
-#define RADIO_CFG_ID2   BV(7)  // PB7 -> P18
-#define RADIO_CFG_ID3   BV(8)  // PB8 -> P19
-
-#define RADIO_ID   (RADIO_CFG_ID0 | \
-                    RADIO_CFG_ID1 | \
-                    RADIO_CFG_ID2 | \
-                    RADIO_CFG_ID3)
 
 
 
@@ -70,27 +58,13 @@ const uint16_t radio_cfg_table[] =
 	MEAS_ALL                       // Id = 15 -> DEBUG MODE
 };
 
-/*
- * Get the device id
- */
-uint8_t radio_cfg_id(void)
+int radio_cfg(uint8_t addr)
 {
-	uint16_t id = stm32_gpioPinRead(((struct stm32_gpio *)GPIOB_BASE), RADIO_ID);
-	return (0xF - (id >> 5));
-}
-
-int radio_cfg(int id)
-{
-	if ((size_t)id >= countof(radio_cfg_table))
+	if ((size_t)addr >= sizeof(radio_cfg_table))
 		return -1;
 
-	return radio_cfg_table[id];
+	return radio_cfg_table[addr];
 }
 
-void radio_cfg_init(void)
-{
-	RCC->APB2ENR |= RCC_APB2_GPIOB;
-	stm32_gpioPinConfig(((struct stm32_gpio *)GPIOB_BASE), RADIO_ID, GPIO_MODE_IPU, GPIO_SPEED_50MHZ);
-}
 
 
