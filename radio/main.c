@@ -76,36 +76,20 @@ static void init(void)
 int main(void)
 {
 	init();
-	/* Send first broadcast message with us configuration */
-	uint8_t id = radio_cfg_id();
+
+	uint8_t id = radio_addr();
 	int cfg = radio_cfg(id);
 	ASSERT(cfg >= 0);
-	LOG_INFO("Module [%d] cfg[%x]\n", id, cfg);
+
+	LOG_INFO("Module [%d] cfg[0x%x]\n", id, cfg);
 
 	measure_init(cfg);
-	cmd_init();
-
-	if (id == RADIO_DEBUG)
-	{
-		while (1)
-		{
-			protocol_encode(&radio, &proto);
-			timer_delay(500);
-		}
-	}
-
-	if (id == RADIO_MASTER)
-		protocol_init(master_cmd);
-	else
-		protocol_init(slave_cmd);
+	cmd_init(id);
 
 	while (1)
 	{
-		//kprintf("%ld\n", rtc_time());
-		protocol_poll(&radio.fd, &proto);
-		cmd_poll(id, &radio.fd, &proto);
+		cmd_poll(&radio.fd, &proto);
 	}
 
 	return 0;
 }
-
