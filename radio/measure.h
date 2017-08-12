@@ -53,7 +53,7 @@
 #define MEAS_I2C   (  MEAS_PRESSURE | \
                       MEAS_PRESS_TEMP )
 
-#define MEAS_ALL           0x3F
+#define MEAS_ALL           0x7F
 
 INLINE int measure_intTemp(uint8_t *data, size_t len)
 {
@@ -91,6 +91,10 @@ INLINE int measure_light(uint8_t *data, size_t len)
 	memcpy(data, &lin, sizeof(uint16_t));
 	return 0;
 }
+
+
+int measure_pressure(uint8_t *data, size_t len);
+int measure_pressureTemp(uint8_t *data, size_t len);
 
 INLINE void measure_deInit(void)
 {

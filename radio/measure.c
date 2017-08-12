@@ -138,6 +138,28 @@ int measure_ntc(int ch, uint8_t *data, size_t len)
 	return 0;
 }
 
+int measure_pressure(uint8_t *data, size_t len)
+{
+	(void)len;
+	int32_t press;
+	if (mlp3115a2_readPressure(&i2c, &press) < 0)
+		return -1;
+
+	memcpy(data, &press, sizeof(int32_t));
+	return 0;
+}
+
+int measure_pressureTemp(uint8_t *data, size_t len)
+{
+	(void)len;
+	int16_t temp = 0;
+	if (mlp3115a2_readTemp(&i2c, &temp) < 0)
+		return -1;
+
+	memcpy(data, &temp, sizeof(int16_t));
+	return 0;
+}
+
 void measure_init(int cfg)
 {
 	MEASURE_INIT();
@@ -150,12 +172,6 @@ void measure_init(int cfg)
 	{
 		i2c_init(&i2c, I2C2, CONFIG_I2C_FREQ);
 		mpl3115a2_init(&i2c);
-		int16_t temp = 0;
-		uint8_t temp_fract = 0;
-		mlp3115a2_readTemp(&i2c, &temp, &temp_fract);
-		int32_t press;
-		uint8_t press_fract;
-		mlp3115a2_readPressure(&i2c, &press, &press_fract);
 	}
 }
 
