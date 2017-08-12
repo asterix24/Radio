@@ -67,29 +67,28 @@ static void init(void)
 	timer_init();
 	rtc_init();
 
+	uint8_t id = radio_addr();
+	int cfg = radio_cfg(id);
+	ASSERT(cfg >= 0);
+
 	spi_init();
 	radio_cfg_init();
 	radio_init(&radio, ping_low_baud_868);
 	radio_timeout(&radio, 500);
+
+	measure_init(cfg);
+	cmd_init(id);
+
+	kprintf(".:!- RADIO LOG SYSTEM -!:.\n");
+	LOG_INFO("Module [%d] cfg[0x%x]\n", id, cfg);
 }
 
 int main(void)
 {
 	init();
 
-	uint8_t id = radio_addr();
-	int cfg = radio_cfg(id);
-	ASSERT(cfg >= 0);
-
-	LOG_INFO("Module [%d] cfg[0x%x]\n", id, cfg);
-
-	measure_init(cfg);
-	cmd_init(id);
-
 	while (1)
-	{
 		cmd_poll(&radio.fd, &proto);
-	}
 
 	return 0;
 }
