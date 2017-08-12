@@ -29,11 +29,8 @@
 #define RADIO_CMD_H
 
 #include "protocol.h"
-#include "radio_cfg.h"
 
 #include <io/kfile.h>
-
-#include <struct/list.h>
 
 /*
  * Message type
@@ -49,44 +46,15 @@
 #define CMD_WAIT_DEV                 2
 #define CMD_SLEEP_DEV                3
 
-#define CMD_SLAVE_STATUS_START           0
-#define CMD_SLAVE_STATUS_BROADCAST       1
-#define CMD_SLAVE_STATUS_WAIT            2
-#define CMD_SLAVE_STATUS_SHUTDOWN        3
-
 /*
  * Settings
  */
-#define CMD_DEVICES                  5
-#define CMD_TIME_TO_STANDBY         20   //s
-#define CMD_TIME_TO_WAKEUP          60*5 //s
-#define CMD_TIME_AFTER_ACK          10   //s
-
-struct Protocol;
-typedef int (*cmd_t)(KFile *fd, struct Protocol *proto);
-
-typedef struct Cmd
-{
-	uint8_t id;
-	cmd_t callback;
-} Cmd;
-
-typedef struct Devices
-{
-	uint8_t status;
-	uint8_t type;
-	uint8_t addr;
-	uint32_t timestamp;
-	uint32_t local_timestamp;
-} Devices;
+#define CMD_SLEEP_TIME          60*5 //s
+#define CMD_MAX_RETRY               3
 
 
-
-extern const Cmd master_cmd[];
-extern const Cmd slave_cmd[];
-
-void cmd_poll(uint8_t id, KFile *fd, struct Protocol *proto);
-void cmd_init(void);
+void cmd_poll(KFile *fd, Protocol *proto);
+void cmd_init(uint8_t addr);
 
 #endif /* RADIO_CMD_H */
 
