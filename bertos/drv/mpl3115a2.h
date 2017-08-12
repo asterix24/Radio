@@ -61,7 +61,7 @@
 #define MPL3115A2_READ_TIMEOUT  500 //ms
 
 void mpl3115a2_init(I2c *i2c);
-int mlp3115a2_readPressure(I2c *i2c, int32_t *pressure, uint8_t *pressure_fract);
-int mlp3115a2_readTemp(I2c *i2c, int16_t *temp, uint8_t *temp_fract);
+int mlp3115a2_readPressure(I2c *i2c, int32_t *pressure);
+int mlp3115a2_readTemp(I2c *i2c, int16_t *temp);
 
 #endif /* DRV_MPL3115A2 */

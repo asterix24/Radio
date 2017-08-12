@@ -26,7 +26,7 @@
  * invalidate any other reasons why the executable file might be covered by
  * the GNU General Public License.
  *
- * Copyright 2009 Develer S.r.l. (http://www.develer.com/)
+ * Copyright 2017 Develer S.r.l. (http://www.develer.com/)
  *
  * -->
  *
@@ -39,7 +39,7 @@
 #include "mpl3115a2.h"
 
 /* Define logging setting (for cfg/log.h module). */
-#define LOG_LEVEL         3
+#define LOG_LEVEL         2
 #define LOG_FORMAT        0
 #include <cfg/log.h>
 #include <cfg/debug.h>
@@ -70,41 +70,30 @@ static int mpl3115a2_readReg(I2c *i2c, uint8_t reg, uint8_t *data)
 	return 0;
 }
 
-int mlp3115a2_readPressure(I2c *i2c, int32_t *pressure, uint8_t *pressure_fract)
+int mlp3115a2_readPressure(I2c *i2c, int32_t *pressure)
 {
 
 	ticks_t start = timer_clock();
 	do {
 		uint8_t status = 0;
-		if (mpl3115a2_readReg(i2c, MPL3115A2_STATUS, &status) < 0) {
-			LOG_ERR("Unable to read from sensor\n");
+		if (mpl3115a2_readReg(i2c, MPL3115A2_STATUS, &status) < 0)
 			continue;
-		}
 
 		if (status && 0x8)
 		{
 			uint8_t p_msb = 0;
-			if (mpl3115a2_readReg(i2c, MPL3115A2_OUT_P_MSB, &p_msb) < 0) {
-				LOG_ERR("Unable to read from sensor\n");
+			if (mpl3115a2_readReg(i2c, MPL3115A2_OUT_P_MSB, &p_msb) < 0)
 				continue;
-			}
 
 			uint8_t p_csb = 0;
-			if (mpl3115a2_readReg(i2c, MPL3115A2_OUT_P_CSB, &p_csb) < 0) {
-				LOG_ERR("Unable to read from sensor\n");
+			if (mpl3115a2_readReg(i2c, MPL3115A2_OUT_P_CSB, &p_csb) < 0)
 				continue;
-			}
 
 			uint8_t p_lsb = 0;
-			if (mpl3115a2_readReg(i2c, MPL3115A2_OUT_P_LSB, &p_lsb) < 0) {
-				LOG_ERR("Unable to read from sensor\n");
+			if (mpl3115a2_readReg(i2c, MPL3115A2_OUT_P_LSB, &p_lsb) < 0)
 				continue;
-			}
 
-			*pressure = ((p_msb << 8 | p_csb) << 2) | p_lsb >> 6;
-			*pressure_fract = (p_lsb >> 4) & 0x3;
-
-			LOG_INFO("Pressure[%ld.%d]\n", *pressure, *pressure_fract);
+			*pressure = ((((p_msb << 8 | p_csb) << 2) | p_lsb >> 6) * 10) | ((p_lsb >> 4) & 0x3);
 			return 0;
 		}
 	} while ((timer_clock() - start) < ms_to_ticks(MPL3115A2_READ_TIMEOUT));
@@ -113,34 +102,25 @@ int mlp3115a2_readPressure(I2c *i2c, int32_t *pressure, uint8_t *pressure_fract)
 	return -1;
 }
 
-int mlp3115a2_readTemp(I2c *i2c, int16_t *temp, uint8_t *temp_fract)
+int mlp3115a2_readTemp(I2c *i2c, int16_t *temp)
 {
 	ticks_t start = timer_clock();
 	do {
 		uint8_t status = 0;
-		if (mpl3115a2_readReg(i2c, MPL3115A2_STATUS, &status) < 0) {
-			LOG_ERR("Unable to read from sensor\n");
+		if (mpl3115a2_readReg(i2c, MPL3115A2_STATUS, &status) < 0)
 			continue;
-		}
 
 		if (status && 0x8)
 		{
 			uint8_t t_msb = 0;
-			if (mpl3115a2_readReg(i2c, MPL3115A2_OUT_T_MSB, &t_msb) < 0) {
-				LOG_ERR("Unable to read from sensor\n");
+			if (mpl3115a2_readReg(i2c, MPL3115A2_OUT_T_MSB, &t_msb) < 0)
 				continue;
-			}
 
 			uint8_t t_lsb = 0;
-			if (mpl3115a2_readReg(i2c, MPL3115A2_OUT_T_LSB, &t_lsb) < 0) {
-				LOG_ERR("Unable to read from sensor\n");
+			if (mpl3115a2_readReg(i2c, MPL3115A2_OUT_T_LSB, &t_lsb) < 0)
 				continue;
-			}
 
-			*temp = t_msb;
-			*temp_fract = t_lsb >> 4;
-
-			LOG_INFO("Temp[%d.%d]\n", *temp, *temp_fract);
+			*temp = (t_msb * 100) | t_lsb >> 4;
 			return 0;
 		}
 	} while ((timer_clock() - start) < ms_to_ticks(MPL3115A2_READ_TIMEOUT));
