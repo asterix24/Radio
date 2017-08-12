@@ -28,7 +28,6 @@
 #ifndef RADIO_PROTOCOL_H
 #define RADIO_PROTOCOL_H
 
-#include "cmd.h"
 #include "radio_cc1101.h"
 
 #include <io/kfile.h>
@@ -57,6 +56,14 @@ typedef struct Protocol
 	uint8_t data[PROTO_DATALEN];
 } Protocol;
 
+typedef int (*proto_callback_t)(KFile *fd, struct Protocol *proto);
+
+typedef struct ProtoCmd
+{
+	uint8_t id;
+	proto_callback_t callback;
+} ProtoCmd;
+
 int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type);
 int protocol_sendByte(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, uint8_t data);
 int protocol_sendBuf(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, const uint8_t *data, size_t len);
@@ -65,12 +72,7 @@ void protocol_encode(Radio *fd, Protocol *proto);
 int protocol_poll(KFile *fd, Protocol *proto);
 int protocol_isDataChage(Protocol *proto);
 void protocol_updateRot(Protocol *proto);
-void protocol_init(const Cmd *table);
-
-INLINE int protocol_broadcast(KFile *fd, Protocol *proto, uint8_t addr, const uint8_t *data, size_t len)
-{
-	return protocol_sendBuf(fd, proto, addr, CMD_BROADCAST, data, len);
-}
+void protocol_init(uint8_t addr, const ProtoCmd *table);
 
 #endif /* RADIO_PROTOCOL_H */
 

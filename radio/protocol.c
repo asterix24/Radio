@@ -44,9 +44,10 @@
 
 #include <string.h>
 
-const Cmd *proto_cmd;
+const ProtoCmd *proto_cmd;
+static int proto_module_addr;
 
-static cmd_t protocol_search(Protocol *proto)
+static proto_callback_t protocol_search(Protocol *proto)
 {
 	for (int i = 0; (proto_cmd[i].id != 0) &&
 			(proto_cmd[i].callback != NULL); i++)
@@ -111,14 +112,13 @@ int protocol_poll(KFile *fd, Protocol *proto)
 
 	ASSERT(proto);
 
-	uint8_t addr = radio_cfg_id();
 	// If we are slave discard all message not for us.
-	if (addr != RADIO_MASTER && proto->addr != addr)
+	if (proto_module_addr != RADIO_MASTER && proto->addr != proto_module_addr)
 		return PROTO_WRONG_ADDR;
 
 	LOG_INFO("Poll cmd[%d]\n", proto->type);
 
-	cmd_t callback = protocol_search(proto);
+	proto_callback_t callback = protocol_search(proto);
 	if (callback)
 		return callback(fd, proto);
 
@@ -174,13 +174,12 @@ void protocol_encode(Radio *fd, Protocol *proto)
 {
 	(void)fd;
 	LOG_INFO("Encode data\n");
-	uint8_t id = radio_cfg_id();
-	int cfg = radio_cfg(id);
+	int cfg = radio_cfg(proto_module_addr);
 
 	memset(proto, 0, sizeof(Protocol));
 
 	proto->timestamp = rtc_time();
-	kprintf("$%d;0;0;%ld;", id, proto->timestamp);
+	kprintf("$%d;0;0;%ld;", proto_module_addr, proto->timestamp);
 
 	size_t index = 0;
 	ENCODE(proto, cfg, MEAS_INT_TEMP,  measure_intTemp,  int16_t,  index, "%d;");
@@ -220,8 +219,9 @@ int protocol_isDataChage(Protocol *proto)
 	return 1;
 }
 
-void protocol_init(const Cmd *table)
+void protocol_init(uint8_t addr, const ProtoCmd *table)
 {
 	proto_cmd = table;
+	proto_module_addr = addr;
 }
 
