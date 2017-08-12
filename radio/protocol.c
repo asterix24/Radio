@@ -149,11 +149,13 @@ void protocol_decode(Radio *fd, Protocol *proto)
 	kprintf("$%d;%d;%d;%ld;", proto->addr, fd->lqi, fd->rssi, proto->timestamp);
 
 	size_t index = 0;
-	DECODE(proto, cfg, MEAS_INT_TEMP,  int16_t,  index, "%d;");
-	DECODE(proto, cfg, MEAS_INT_VREF,  uint16_t, index, "%d;");
-	DECODE(proto, cfg, MEAS_NTC_CH0,   int16_t,  index, "%d;");
-	DECODE(proto, cfg, MEAS_NTC_CH1,   int16_t,  index, "%d;");
-	DECODE(proto, cfg, MEAS_PHOTO_CH3, uint16_t, index, "%d;");
+	DECODE(proto, cfg, MEAS_INT_TEMP,   int16_t,  index, "%d;");
+	DECODE(proto, cfg, MEAS_INT_VREF,   uint16_t, index, "%d;");
+	DECODE(proto, cfg, MEAS_NTC_CH0,    int16_t,  index, "%d;");
+	DECODE(proto, cfg, MEAS_NTC_CH1,    int16_t,  index, "%d;");
+	DECODE(proto, cfg, MEAS_PHOTO_CH3,  uint16_t, index, "%d;");
+	DECODE(proto, cfg, MEAS_PRESSURE,   int32_t,  index, "%ld;");
+	DECODE(proto, cfg, MEAS_PRESS_TEMP, int16_t,  index, "%d;");
 
 	kputs("\n");
 }
@@ -182,11 +184,13 @@ void protocol_encode(Radio *fd, Protocol *proto)
 	kprintf("$%d;0;0;%ld;", proto_module_addr, proto->timestamp);
 
 	size_t index = 0;
-	ENCODE(proto, cfg, MEAS_INT_TEMP,  measure_intTemp,  int16_t,  index, "%d;");
-	ENCODE(proto, cfg, MEAS_INT_VREF,  measure_intVref,  uint16_t, index, "%d;");
-	ENCODE(proto, cfg, MEAS_NTC_CH0,   measure_ntc0,     int16_t,  index, "%d;");
-	ENCODE(proto, cfg, MEAS_NTC_CH1,   measure_ntc1,     int16_t,  index, "%d;");
-	ENCODE(proto, cfg, MEAS_PHOTO_CH3, measure_light,    uint16_t, index, "%d;");
+	ENCODE(proto, cfg, MEAS_INT_TEMP,   measure_intTemp,      int16_t,  index, "%d;");
+	ENCODE(proto, cfg, MEAS_INT_VREF,   measure_intVref,      uint16_t, index, "%d;");
+	ENCODE(proto, cfg, MEAS_NTC_CH0,    measure_ntc0,         int16_t,  index, "%d;");
+	ENCODE(proto, cfg, MEAS_NTC_CH1,    measure_ntc1,         int16_t,  index, "%d;");
+	ENCODE(proto, cfg, MEAS_PHOTO_CH3,  measure_light,        uint16_t, index, "%d;");
+	ENCODE(proto, cfg, MEAS_PRESSURE,   measure_pressure,     int32_t,  index, "%ld;");
+	ENCODE(proto, cfg, MEAS_PRESS_TEMP, measure_pressureTemp, int16_t,  index, "%d;");
 
 	kputs("\n");
 }
