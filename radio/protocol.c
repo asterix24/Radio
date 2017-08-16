@@ -172,6 +172,8 @@ void protocol_decode(Radio *fd, Protocol *proto)
 		} \
 	} while (0)
 
+static bool always_on = false;
+
 void protocol_encode(Radio *fd, Protocol *proto)
 {
 	(void)fd;
@@ -183,6 +185,9 @@ void protocol_encode(Radio *fd, Protocol *proto)
 	proto->timestamp = rtc_time();
 	kprintf("$%d;0;0;%ld;", proto_module_addr, proto->timestamp);
 
+	if (!always_on)
+		measure_enable(cfg);
+
 	size_t index = 0;
 	ENCODE(proto, cfg, MEAS_INT_TEMP,   measure_intTemp,      int16_t,  index, "%d;");
 	ENCODE(proto, cfg, MEAS_INT_VREF,   measure_intVref,      uint16_t, index, "%d;");
@@ -191,6 +196,9 @@ void protocol_encode(Radio *fd, Protocol *proto)
 	ENCODE(proto, cfg, MEAS_PHOTO_CH3,  measure_light,        uint16_t, index, "%d;");
 	ENCODE(proto, cfg, MEAS_PRESSURE,   measure_pressure,     int32_t,  index, "%ld;");
 	ENCODE(proto, cfg, MEAS_PRESS_TEMP, measure_pressureTemp, int16_t,  index, "%d;");
+
+	if (!always_on)
+		measure_disable();
 
 	kputs("\n");
 }
@@ -227,5 +235,14 @@ void protocol_init(uint8_t addr, const ProtoCmd *table)
 {
 	proto_cmd = table;
 	proto_module_addr = addr;
+
+	if (proto_module_addr == RADIO_MASTER ||
+			proto_module_addr  == RADIO_DEBUG)
+	{
+		int cfg = radio_cfg(proto_module_addr);
+		measure_enable(cfg);
+		always_on = true;
+	}
+
 }
 

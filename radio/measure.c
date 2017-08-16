@@ -37,6 +37,7 @@
 #include <cpu/types.h>
 
 #include <drv/rtc.h>
+#include <drv/timer.h>
 #include <drv/i2c.h>
 #include <drv/mpl3115a2.h>
 
@@ -160,9 +161,9 @@ int measure_pressureTemp(uint8_t *data, size_t len)
 	return 0;
 }
 
-void measure_init(int cfg)
+
+void measure_enable(int cfg)
 {
-	MEASURE_INIT();
 	MEASURE_ON();
 
 	if (cfg & MEAS_ADC)
@@ -174,4 +175,10 @@ void measure_init(int cfg)
 		mpl3115a2_init(&i2c);
 	}
 }
+
+void measure_init(void)
+{
+	MEASURE_INIT();
+}
+
 

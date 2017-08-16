@@ -154,5 +154,4 @@ void mpl3115a2_init(I2c *i2c)
 		if (ret < 0)
 			LOG_ERR("Unable to write mpl3115a configuration [%i]\n", i);
 	}
-
 }

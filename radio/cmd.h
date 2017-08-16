@@ -49,7 +49,9 @@
 /*
  * Settings
  */
-#define CMD_SLEEP_TIME          60*5 //s
+#define CMD_RECV_TIME            5*60*1000 //ms
+#define CMD_SLEEP_TIME          24*60      //s
+#define CMD_RETRY_TIME             30*1000 //ms
 #define CMD_MAX_RETRY               3
 
 

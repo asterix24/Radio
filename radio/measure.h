@@ -96,12 +96,14 @@ INLINE int measure_light(uint8_t *data, size_t len)
 int measure_pressure(uint8_t *data, size_t len);
 int measure_pressureTemp(uint8_t *data, size_t len);
 
-INLINE void measure_deInit(void)
+INLINE void measure_disable(void)
 {
 	MEASURE_OFF();
 }
 
-void measure_init(int cfg);
+void measure_enable(int cfg);
+
+void measure_init(void);
 
 #endif /* RADIO_MEASURE_H */
 

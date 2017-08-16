@@ -145,6 +145,7 @@ static void radio_goIdle(void)
 }
 
 
+
 INLINE uint8_t radio_status(void)
 {
 	uint8_t status;
