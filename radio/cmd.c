@@ -29,6 +29,7 @@
 #include "protocol.h"
 #include "radio_cfg.h"
 #include "measure.h"
+#include "radio_cc1101.h"
 
 #include "hw/hw_pwr.h"
 
@@ -48,7 +49,6 @@
 
 static int cmd_addr;
 static uint8_t tx_retry = 1;
-static int elapse_time;
 
 
 static void slave_shutdown(void)
@@ -56,7 +56,7 @@ static void slave_shutdown(void)
 	uint32_t wup = rtc_time() + (uint32_t)CMD_SLEEP_TIME;
 	LOG_INFO("Go Standby, wakeup to %lds\n", wup);
 	rtc_setAlarm(wup);
-	measure_deInit();
+	radio_sleep();
 	go_standby();
 }
 
@@ -66,8 +66,8 @@ static int cmd_broadcast(KFile *_fd, Protocol *proto)
 	int ret;
 	if (cmd_addr == RADIO_MASTER)
 	{
-		protocol_decode(fd, proto);
 		ret = protocol_sendByte(_fd, proto, proto->addr, proto->type, PROTO_ACK);
+		protocol_decode(fd, proto);
 	}
 	else
 	{
@@ -91,21 +91,24 @@ void cmd_poll(KFile *_fd, struct Protocol *proto)
 	protocol_poll(_fd, proto);
 
 	Radio *fd = RADIO_CAST(_fd);
-	if ((rtc_time() - elapse_time) > 0)
-		return;
-
-	protocol_encode(fd, proto);
 
 	if (cmd_addr == RADIO_DEBUG)
 	{
-		elapse_time = rtc_time() + 1;
+		protocol_encode(fd, proto);
+		radio_timeout(fd, 1000);
 		return;
 	}
 
 	if (cmd_addr == RADIO_MASTER)
-		elapse_time = rtc_time() + CMD_SLEEP_TIME;
+	{
+		protocol_encode(fd, proto);
+		radio_timeout(fd, CMD_RECV_TIME);
+	}
 	else
 	{
+		if (tx_retry == 1)
+			protocol_encode(fd, proto);
+
 		if (!protocol_isDataChage(proto) ||
 				tx_retry == CMD_MAX_RETRY)
 		{
@@ -116,21 +119,18 @@ void cmd_poll(KFile *_fd, struct Protocol *proto)
 		{
 			protocol_updateRot(proto);
 			int sent = protocol_send(_fd, proto, cmd_addr, CMD_BROADCAST);
-
-			elapse_time = rtc_time() + (CMD_SLEEP_TIME / tx_retry);
+			radio_timeout(fd, (CMD_RETRY_TIME / tx_retry));
 			tx_retry++;
 			LOG_INFO("Broadcast sent[%d] %s[%d] time[%d]\n", \
 					proto->type, sent < 0 ? "Error!":"Ok", sent, \
-					CMD_SLEEP_TIME / tx_retry);
+					CMD_RETRY_TIME / tx_retry);
 		}
 	}
 }
 
 void cmd_init(uint8_t addr)
 {
-	elapse_time = rtc_time();
 	cmd_addr = addr;
-
 	protocol_init(addr, cmd_table);
 }
 
