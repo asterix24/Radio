@@ -86,6 +86,11 @@ INLINE void radio_timeout(Radio *fd, mtime_t timeout)
 	fd->recv_timeout = timeout;
 }
 
+INLINE void radio_txPwr(Radio *fd, uint8_t pwr)
+{
+	fd->status = cc1101_write(CC1101_PATABLE, (const uint8_t *)&pwr, sizeof(uint8_t));
+}
+
 void radio_init(Radio *fd, const Setting * settings);
 
 #endif /* RADIO_CC1101_H */

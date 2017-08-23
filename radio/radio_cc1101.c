@@ -71,7 +71,7 @@ const Setting ping_low_baud_868[] =
   {CC1101_TEST2,       0x81 /* Various Test Settings */},
   {CC1101_TEST1,       0x35 /* Various Test Settings */},
 
-  {CC1101_PATABLE,     0xC0  /* Various Test Settings */ },
+  // {CC1101_PATABLE,     0xC0  /* Various Test Settings */ },
 
   {CC1101_MDMCFG1,     0x42 /* Modem Configuration */},
 #if CONFIG_RADIO_CURRENT_OPT
@@ -85,8 +85,6 @@ const Setting ping_low_baud_868[] =
 
   { 0xff, 0xff },
 };
-
-
 
 static bool wait_fifoAvail(mtime_t timeout)
 {
@@ -143,8 +141,6 @@ static void radio_goIdle(void)
 	uint8_t status = cc1101_strobe(CC1101_SIDLE);
 	LOG_INFO("GoIdle: Rdy[%d] St[%d] FifoAvail[%d]\n", UNPACK_STATUS(status));
 }
-
-
 
 INLINE uint8_t radio_status(void)
 {

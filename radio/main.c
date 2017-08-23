@@ -82,6 +82,12 @@ static void init(void)
 
 	kprintf("\n\n <::== RADIO LOG SYSTEM ==::>\n\n");
 	LOG_INFO("Module [%d] cfg[0x%x]\n", id, cfg);
+
+	if (id == RADIO_MASTER)
+		radio_txPwr(&radio, 0xC0);
+	else
+		radio_txPwr(&radio, 0x03);
+
 }
 
 int main(void)
