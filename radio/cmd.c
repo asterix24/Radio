@@ -48,7 +48,7 @@
 
 
 static int cmd_addr;
-static uint8_t tx_retry = 1;
+static uint8_t tx_retry = 0;
 
 
 static void slave_shutdown(void)
@@ -102,30 +102,31 @@ void cmd_poll(KFile *_fd, struct Protocol *proto)
 	if (cmd_addr == RADIO_MASTER)
 	{
 		protocol_encode(fd, proto);
-		radio_timeout(fd, CMD_RECV_TIME);
+		radio_timeout(fd, -1);
+		return;
+	}
+
+
+	if (tx_retry == 0)
+	{
+		protocol_encode(fd, proto);
+		if (!protocol_isDataChage(proto))
+			slave_shutdown();
+
 	}
 	else
 	{
-		if (tx_retry == 1)
-			protocol_encode(fd, proto);
-
-		if (!protocol_isDataChage(proto) ||
-				tx_retry == CMD_MAX_RETRY)
-		{
-			LOG_INFO("No data change set shutdown state\n");
-			slave_shutdown();
-		}
-		else
-		{
-			protocol_updateRot(proto);
-			int sent = protocol_send(_fd, proto, cmd_addr, CMD_BROADCAST);
-			radio_timeout(fd, (CMD_RETRY_TIME / tx_retry));
-			tx_retry++;
-			LOG_INFO("Broadcast sent[%d] %s[%d] time[%d]\n", \
-					proto->type, sent < 0 ? "Error!":"Ok", sent, \
-					CMD_RETRY_TIME / tx_retry);
-		}
+		protocol_updateRot(proto);
+		int sent = protocol_send(_fd, proto, cmd_addr, CMD_BROADCAST);
+		radio_timeout(fd, CMD_RETRY_TIME);
+		LOG_INFO("Sent[%d] %s[%d]\n", \
+				proto->type, sent < 0 ? "Error!":"Ok", sent);
 	}
+
+	if (tx_retry == CMD_MAX_RETRY)
+		slave_shutdown();
+
+	tx_retry++;
 }
 
 void cmd_init(uint8_t addr)
