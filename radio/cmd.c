@@ -66,8 +66,9 @@ static int cmd_broadcast(KFile *_fd, Protocol *proto)
 	int ret;
 	if (cmd_addr == RADIO_MASTER)
 	{
-		ret = protocol_sendByte(_fd, proto, proto->addr, proto->type, PROTO_ACK);
 		protocol_decode(fd, proto);
+		for (int i = 0; i < CMD_MAX_RETRY; i++)
+			ret = protocol_sendByte(_fd, proto, proto->addr, proto->type, PROTO_ACK);
 	}
 	else
 	{
@@ -95,6 +96,9 @@ void cmd_poll(KFile *_fd, struct Protocol *proto)
 	if (cmd_addr == RADIO_DEBUG)
 	{
 		protocol_encode(fd, proto);
+		int sent = protocol_send(_fd, proto, cmd_addr, CMD_BROADCAST);
+		LOG_INFO("Sent[%d] %s[%d]\n", \
+				proto->type, sent < 0 ? "Error!":"Ok", sent);
 		radio_timeout(fd, 1000);
 		return;
 	}
