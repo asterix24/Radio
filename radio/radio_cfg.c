@@ -55,7 +55,7 @@ const uint16_t radio_cfg_table[] =
 	MEAS_INT_TEMP | MEAS_INT_VREF | MEAS_NTC_CH0 | MEAS_NTC_CH1, // Id = 12
 	MEAS_INT_TEMP | MEAS_INT_VREF, // Id = 13
 	MEAS_INT_TEMP | MEAS_INT_VREF, // Id = 14
-	MEAS_ALL                       // Id = 15 -> DEBUG MODE
+	MEAS_ADC                       // Id = 15 -> DEBUG MODE
 };
 
 int radio_cfg(uint8_t addr)
