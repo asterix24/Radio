@@ -19,7 +19,6 @@ radio_USER_CSRC = \
 	$(radio_SRC_PATH)/radio_cc1101.c \
 	$(radio_SRC_PATH)/radio_cfg.c \
 	$(radio_SRC_PATH)/protocol.c \
-	$(radio_SRC_PATH)/cmd.c \
 	$(radio_SRC_PATH)/measure.c \
 	#
 

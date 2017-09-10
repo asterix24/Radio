@@ -34,8 +34,26 @@
 
 #include <cpu/types.h>
 
-/* Settings */
-#define PROTO_DATALEN  (RADIO_MAXPAYLOAD_LEN - 12) // See Protocol structure, we remove the other fields.
+/*
+ * Message type
+ */
+#define CMD_BROADCAST        0xFF
+#define CMD_WAIT             0x1
+#define CMD_SLEEP            0x2
+
+/*
+ * Device and slave status
+ */
+#define CMD_NEW_DEV                  1
+#define CMD_WAIT_DEV                 2
+#define CMD_SLEEP_DEV                3
+
+/*
+ * Settings
+ */
+#define CMD_SLEEP_TIME               15      //s
+#define CMD_RETRY_TIME             1*1000 //ms
+#define CMD_MAX_RETRY               3
 
 /* Protocol constant define */
 #define PROTO_ACK    0x06
@@ -47,32 +65,35 @@
 #define PROTO_WRONG_ADDR    -2
 #define PROTO_TIMEOUT       -3
 
-typedef struct Protocol
+/* Settings */
+// See Protocol structure, we remove the other fields.
+#define PROTO_DATALEN  \
+	(RADIO_MAXPAYLOAD_LEN - \
+		(  \
+			sizeof(uint8_t) + \
+			sizeof(uint8_t) + \
+			sizeof(uint32_t) \
+		 ) \
+	)
+
+typedef struct PACKED Protocol
 {
-	uint8_t type;
+	uint8_t len;
 	uint8_t addr;
 	uint32_t timestamp;
-	uint16_t len;
 	uint8_t data[PROTO_DATALEN];
 } Protocol;
 
-typedef int (*proto_callback_t)(KFile *fd, struct Protocol *proto);
 
-typedef struct ProtoCmd
-{
-	uint8_t id;
-	proto_callback_t callback;
-} ProtoCmd;
 
-int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type);
-int protocol_sendByte(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, uint8_t data);
-int protocol_sendBuf(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type, const uint8_t *data, size_t len);
-void protocol_decode(Radio *fd, Protocol *proto);
-void protocol_encode(Radio *fd, Protocol *proto);
-int protocol_poll(KFile *fd, Protocol *proto);
+int protocol_decode(Radio *fd, Protocol *proto);
+void protocol_encode(uint8_t id, uint8_t cfg, Radio *fd, Protocol *proto);
+int protocol_poll(void);
 int protocol_isDataChage(Protocol *proto);
 void protocol_updateRot(Protocol *proto);
-void protocol_init(uint8_t addr, const ProtoCmd *table);
+void slave_shutdown(void);
+
+void protocol_init(Protocol *proto);
 
 #endif /* RADIO_PROTOCOL_H */
 

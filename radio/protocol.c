@@ -26,13 +26,13 @@
  */
 
 #include "protocol.h"
-#include "cmd.h"
 #include "radio_cfg.h"
+#include "hw/hw_pwr.h"
 
 #include <cfg/debug.h>
 
 // Define logging setting (for cfg/log.h module).
-#define LOG_LEVEL   2
+#define LOG_LEVEL   3
 #define LOG_FORMAT  0
 
 #include <cfg/log.h>
@@ -44,88 +44,6 @@
 
 #include <string.h>
 
-const ProtoCmd *proto_cmd;
-static int proto_module_addr;
-
-static proto_callback_t protocol_search(Protocol *proto)
-{
-	for (int i = 0; (proto_cmd[i].id != 0) &&
-			(proto_cmd[i].callback != NULL); i++)
-		if (proto->type == proto_cmd[i].id)
-			return proto_cmd[i].callback;
-
-	return NULL;
-}
-INLINE int check_err(KFile *fd)
-{
-	int ret = kfile_error(fd);
-	if (ret < 0)
-	{
-		kfile_clearerr(fd);
-		if (ret == RADIO_RX_TIMEOUT)
-			return PROTO_TIMEOUT;
-
-		return PROTO_ERR;
-	}
-	return ret;
-}
-
-int protocol_send(KFile *fd, Protocol *proto, uint8_t addr, uint8_t type)
-{
-
-	proto->type = type;
-	proto->addr = addr;
-
-	kfile_write(fd, proto, sizeof(Protocol));
-
-	LOG_INFO("Send[%d] to [%d]\n", proto->type, proto->addr);
-
-	return check_err(fd);
-}
-
-int protocol_sendByte(KFile *fd, Protocol *proto, uint8_t addr,
-		uint8_t type, uint8_t data)
-{
-	proto->len = sizeof(data);
-	memcpy(proto->data, &data, sizeof(data));
-
-	return protocol_send(fd, proto, addr, type);
-}
-
-int protocol_sendBuf(KFile *fd, Protocol *proto, uint8_t addr,
-		uint8_t type, const uint8_t *data, size_t len)
-{
-	ASSERT(len < PROTO_DATALEN);
-	proto->len = len;
-	memcpy(proto->data, data, len);
-
-	return protocol_send(fd, proto, addr, type);
-}
-
-int protocol_poll(KFile *fd, Protocol *proto)
-{
-	memset(proto, 0, sizeof(Protocol));
-	kfile_read(fd, proto, sizeof(Protocol));
-	int ret = check_err(fd);
-	if (ret < 0)
-		return ret;
-
-	ASSERT(proto);
-
-	// If we are slave discard all message not for us.
-	if (proto_module_addr != RADIO_MASTER && proto->addr != proto_module_addr)
-		return PROTO_WRONG_ADDR;
-
-	LOG_INFO("Poll cmd[%d]\n", proto->type);
-
-	proto_callback_t callback = protocol_search(proto);
-	if (callback)
-		return callback(fd, proto);
-
-	return PROTO_ERR;
-}
-
-
 #define DECODE(msg, cfg, mask, T, index, fmt) \
 	do { \
 		if ((cfg) & (mask)) { \
@@ -136,28 +54,30 @@ int protocol_poll(KFile *fd, Protocol *proto)
 		} \
 	} while (0)
 
-void protocol_decode(Radio *fd, Protocol *proto)
+int protocol_decode(Radio *fd, Protocol *prt)
 {
-	int cfg = radio_cfg(proto->addr);
+	int cfg = radio_cfg(prt->addr);
 	if (cfg < 0) {
-		LOG_ERR("Unable to decode package, no valid cfg found for given address[%d]", \
-				proto->addr);
-		return;
+		LOG_ERR("No decode, unvalid addr[%d]", \
+				prt->addr);
+		return -1;
 	}
 
-	LOG_INFO("Decode len[%d] addr[%d] cfg[%x]\n", proto->len, proto->addr, cfg);
-	kprintf("$%d;%d;%d;%ld;", proto->addr, fd->lqi, fd->rssi, proto->timestamp);
+	LOG_INFO("Decode len[%d] addr[%d] cfg[%x]\n", prt->len, prt->addr, cfg);
+	kprintf("$%d;%d;%d;%ld;", prt->addr, fd->lqi, fd->rssi, prt->timestamp);
 
 	size_t index = 0;
-	DECODE(proto, cfg, MEAS_INT_TEMP,   int16_t,  index, "%d;");
-	DECODE(proto, cfg, MEAS_INT_VREF,   uint16_t, index, "%d;");
-	DECODE(proto, cfg, MEAS_NTC_CH0,    int16_t,  index, "%d;");
-	DECODE(proto, cfg, MEAS_NTC_CH1,    int16_t,  index, "%d;");
-	DECODE(proto, cfg, MEAS_PHOTO_CH3,  uint16_t, index, "%d;");
-	DECODE(proto, cfg, MEAS_PRESSURE,   int32_t,  index, "%ld;");
-	DECODE(proto, cfg, MEAS_PRESS_TEMP, int16_t,  index, "%d;");
+	DECODE(prt, cfg, MEAS_INT_TEMP,   int16_t,  index, "%d;");
+	DECODE(prt, cfg, MEAS_INT_VREF,   uint16_t, index, "%d;");
+	DECODE(prt, cfg, MEAS_NTC_CH0,    int16_t,  index, "%d;");
+	DECODE(prt, cfg, MEAS_NTC_CH1,    int16_t,  index, "%d;");
+	DECODE(prt, cfg, MEAS_PHOTO_CH3,  uint16_t, index, "%d;");
+	DECODE(prt, cfg, MEAS_PRESSURE,   int32_t,  index, "%ld;");
+	DECODE(prt, cfg, MEAS_PRESS_TEMP, int16_t,  index, "%d;");
 
 	kputs("\n");
+
+	return 0;
 }
 
 #define ENCODE(msg, cfg, mask, callback, T, index, fmt) \
@@ -172,33 +92,23 @@ void protocol_decode(Radio *fd, Protocol *proto)
 		} \
 	} while (0)
 
-static bool always_on = false;
-
-void protocol_encode(Radio *fd, Protocol *proto)
+void protocol_encode(uint8_t id, uint8_t cfg, Radio *fd, Protocol *prt)
 {
 	(void)fd;
 	LOG_INFO("Encode data\n");
-	int cfg = radio_cfg(proto_module_addr);
-
-	memset(proto, 0, sizeof(Protocol));
-
-	proto->timestamp = rtc_time();
-	kprintf("$%d;0;0;%ld;", proto_module_addr, proto->timestamp);
-
-	if (!always_on)
-		measure_enable(cfg);
+	prt->len = 0;
+	prt->timestamp = rtc_time();
+	prt->addr = id;
+	kprintf("$%d;0;0;%ld;", id, prt->timestamp);
 
 	size_t index = 0;
-	ENCODE(proto, cfg, MEAS_INT_TEMP,   measure_intTemp,      int16_t,  index, "%d;");
-	ENCODE(proto, cfg, MEAS_INT_VREF,   measure_intVref,      uint16_t, index, "%d;");
-	ENCODE(proto, cfg, MEAS_NTC_CH0,    measure_ntc0,         int16_t,  index, "%d;");
-	ENCODE(proto, cfg, MEAS_NTC_CH1,    measure_ntc1,         int16_t,  index, "%d;");
-	ENCODE(proto, cfg, MEAS_PHOTO_CH3,  measure_light,        uint16_t, index, "%d;");
-	ENCODE(proto, cfg, MEAS_PRESSURE,   measure_pressure,     int32_t,  index, "%ld;");
-	ENCODE(proto, cfg, MEAS_PRESS_TEMP, measure_pressureTemp, int16_t,  index, "%d;");
-
-	if (!always_on)
-		measure_disable();
+	ENCODE(prt, cfg, MEAS_INT_TEMP,   measure_intTemp,      int16_t,  index, "%d;");
+	ENCODE(prt, cfg, MEAS_INT_VREF,   measure_intVref,      uint16_t, index, "%d;");
+	ENCODE(prt, cfg, MEAS_NTC_CH0,    measure_ntc0,         int16_t,  index, "%d;");
+	ENCODE(prt, cfg, MEAS_NTC_CH1,    measure_ntc1,         int16_t,  index, "%d;");
+	ENCODE(prt, cfg, MEAS_PHOTO_CH3,  measure_light,        uint16_t, index, "%d;");
+	ENCODE(prt, cfg, MEAS_PRESSURE,   measure_pressure,     int32_t,  index, "%ld;");
+	ENCODE(prt, cfg, MEAS_PRESS_TEMP, measure_pressureTemp, int16_t,  index, "%d;");
 
 	kputs("\n");
 }
@@ -231,18 +141,19 @@ int protocol_isDataChage(Protocol *proto)
 	return 1;
 }
 
-void protocol_init(uint8_t addr, const ProtoCmd *table)
+void slave_shutdown(void)
 {
-	proto_cmd = table;
-	proto_module_addr = addr;
+	uint32_t wup = rtc_time() + (uint32_t)CMD_SLEEP_TIME;
+	LOG_INFO("Go Standby, wakeup to %lds\n", wup);
+	rtc_setAlarm(wup);
+	radio_sleep();
+	go_standby();
+}
 
-	if (proto_module_addr == RADIO_MASTER ||
-			proto_module_addr  == RADIO_DEBUG)
-	{
-		int cfg = radio_cfg(proto_module_addr);
-		measure_enable(cfg);
-		always_on = true;
-	}
 
+void protocol_init(Protocol *proto)
+{
+	ASSERT(proto);
+	memset(proto, 0, sizeof(Protocol));
 }
 

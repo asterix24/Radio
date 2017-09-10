@@ -43,7 +43,7 @@
 /**
  * Radio KFile context structure.
  */
-typedef struct Radio
+typedef struct PACKED Radio
 {
 	KFile fd; ///< File descriptor.
 	mtime_t recv_timeout;

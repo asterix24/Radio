@@ -44,25 +44,26 @@
 
 #define CC1101_WAIT_IDLE_TIMEOUT   5000 // ms
 
-#if 1
+#if 0
 /*
- * Datarate: 38.4 kBaud
+ * Datarate: 5 kBaud
  * Freq: 868MHz
- * GSFK, 100kHz
+ * GSFK, 23.5kHz
  */
 const Setting ping_low_baud_868[] =
 {
   {CC1101_IOCFG0,      0x01},
+
   {CC1101_FIFOTHR,     0x47},
   {CC1101_PKTCTRL0,    0x05},
   {CC1101_FSCTRL1,     0x06},
   {CC1101_FREQ2,       0x21},
   {CC1101_FREQ1,       0x62},
   {CC1101_FREQ0,       0x76},
-  {CC1101_MDMCFG4,     0xCA},
-  {CC1101_MDMCFG3,     0x83},
+  {CC1101_MDMCFG4,     0xC7},
+  {CC1101_MDMCFG3,     0x75},
   {CC1101_MDMCFG2,     0x13},
-  {CC1101_DEVIATN,     0x35},
+  {CC1101_DEVIATN,     0x37},
   {CC1101_MCSM0,       0x18},
   {CC1101_FOCCFG,      0x16},
   {CC1101_AGCCTRL2,    0x43},
@@ -78,15 +79,17 @@ const Setting ping_low_baud_868[] =
   { 0xff, 0xff },
 };
 
+
 #else
 
 const Setting ping_low_baud_868[] =
 {
-  {CC1101_IOCFG0,      0x01 /* GDO0 Output Pin Configuration */},
+  {CC1101_IOCFG0,      0x06 /* GDO0 Output Pin Configuration */},
   {CC1101_FIFOTHR,     0x47 /* RX FIFO and TX FIFO Thresholds */},
-  {CC1101_PKTCTRL0,    0x05 /* Packet Automation Control */},
-  {CC1101_PKTCTRL1,    0x00 /* Packet Automation Control */},
-  {CC1101_CHANNR,      0x08 /* Channel Number */},
+  {CC1101_PKTCTRL0,    0x00 /* Packet Automation Control */},
+  {CC1101_PKTCTRL1,    0x00                 },
+  {CC1101_PKTLEN,      RADIO_MAXPAYLOAD_LEN },
+  {CC1101_CHANNR,      0x00 /* Channel Number */},
 
   {CC1101_FSCTRL1,     0x06 /* Frequency Synthesizer Control */},
   {CC1101_FREQ0,       0x76 /* Frequency Control Word, Low Byte */},
@@ -109,8 +112,9 @@ const Setting ping_low_baud_868[] =
 
   // {CC1101_PATABLE,     0xC0  /* Various Test Settings */ },
 
+  {CC1101_MDMCFG0,     0xC2 /* Modem Configuration */},
   {CC1101_MDMCFG1,     0x42 /* Modem Configuration */},
-#if CONFIG_RADIO_CURRENT_OPT
+#if 0//CONFIG_RADIO_CURRENT_OPT
   {CC1101_MDMCFG2,     0x93 /* Modem Configuration */},
 #else
   {CC1101_MDMCFG2,     0x13 /* Modem Configuration */},
@@ -190,22 +194,6 @@ INLINE uint8_t radio_status(void)
 	return status;
 }
 
-INLINE int radio_lqi(void)
-{
-	uint8_t lqi = 0;
-	cc1101_read(CC1101_LQI, &lqi, 1);
-
-	return lqi;
-}
-
-INLINE int radio_rssi(void)
-{
-	uint8_t rssi = 0;
-	cc1101_read(CC1101_RSSI, &rssi, 1);
-
-	return cc1101_rssidBm(rssi, 74);
-}
-
 void radio_sleep(void)
 {
 	LOG_INFO("Sleep: Rdy[%d] St[%d] FifoAvail[%d]\n", UNPACK_STATUS(cc1101_strobe(CC1101_SPWD)));
@@ -223,31 +211,39 @@ static void radio_clearerr(struct KFile *_fd)
 	fd->error = 0;
 }
 
-static uint8_t tmp_buf[65];
 static size_t radio_send(struct KFile *_fd, const void *_buf, size_t size)
 {
 	/* The packet len is now fix to max 64 byte (see configuation)*/
-	ASSERT(sizeof(tmp_buf) >= size);
+	ASSERT(size <= 64);
+	kprintf("TxLen[%d]\n", size);
 
 	const uint8_t *data = (const uint8_t *) _buf;
 	Radio *fd = RADIO_CAST(_fd);
 
-	radio_waitIdle(-1);
+	if (!radio_waitIdle(1000))
+	{
+		fd->error = RADIO_TX_ERR;
+		return RADIO_TX_ERR;
+	}
+
+	// Flush Tx FiFo
 	cc1101_strobe(CC1101_SFTX);
-	uint8_t status = cc1101_strobe(CC1101_STX);
+	// Go in Tx mode
+	cc1101_strobe(CC1101_STX);
 
-	memset(tmp_buf, 0, sizeof(tmp_buf));
-	// We reserve one byte for package len
-	size_t tx_len = MIN(sizeof(tmp_buf) - 1, size + 1);
+	fd->status = cc1101_write(CC1101_TXFIFO, data, size);
+	LOG_INFO("TxData[%d] s[%d]\n", size, STATUS_STATE(fd->status));
 
-	tmp_buf[0] = tx_len - 1;
-	memcpy(&tmp_buf[1], data, tx_len);
-	fd->status = cc1101_write(CC1101_TXFIFO, tmp_buf, tx_len);
-	LOG_INFO("TxData[%d] s[%d]\n", tmp_buf[0], STATUS_STATE(fd->status));
+	radio_waitIdle(1000);
+	// Flush Tx FiFo
+	LOG_INFO("Tx: s1[%d]\n", STATUS_STATE(cc1101_strobe(CC1101_SFTX)));
 
-	radio_waitIdle(-1);
-	status = cc1101_strobe(CC1101_SFTX);
-	LOG_INFO("Tx: s1[%d]\n", STATUS_STATE(status));
+	LOG_ERRB(
+	kputs("[");
+	for (size_t i = 0; i < size; i++)
+		kprintf("%x ", data[i]);
+	kprintf("] %d\n", size);
+	);
 
 	if (STATUS_STATE(fd->status) == CC1101_STATUS_TX_FIFOUNFLOW)
 	{
@@ -255,7 +251,7 @@ static size_t radio_send(struct KFile *_fd, const void *_buf, size_t size)
 		return RADIO_TX_ERR;
 	}
 
-	return tx_len;
+	return size;
 }
 
 static size_t radio_recv(struct KFile *_fd, void *buf, size_t size)
@@ -263,52 +259,61 @@ static size_t radio_recv(struct KFile *_fd, void *buf, size_t size)
 	uint8_t *data = (uint8_t *)buf;
 	Radio *fd = RADIO_CAST(_fd);
 
-	radio_waitIdle(-1);
+	if (!radio_waitIdle(1000))
+	{
+		fd->error = RADIO_RX_ERR;
+		return RADIO_RX_ERR;
+	}
+
+	// Flush Rx FiFo
 	cc1101_strobe(CC1101_SFRX);
-	uint8_t status = cc1101_strobe(CC1101_SRX);
-	LOG_INFO("RxData: Rdy[%d] St[%d] FifoAvail[%d]\n", UNPACK_STATUS(status));
+	// Go in Rx mode
+	cc1101_strobe(CC1101_SRX);
 
 	// Waiting data from air..
 	if (!wait_fifoAvail(fd->recv_timeout))
 	{
-		radio_goIdle();
+		// Flush Rx FiFo
 		cc1101_strobe(CC1101_SFRX);
-		LOG_INFO("Rx timeout..\n");
 		fd->error = RADIO_RX_TIMEOUT;
+
+		LOG_ERR("Rx timeout..\n");
+
+		radio_goIdle();
 		return RADIO_RX_TIMEOUT;
 	}
 
-	uint8_t rx_data;
-	cc1101_read(CC1101_RXFIFO, &rx_data, 1);
+	kprintf("RxLen[%d]\n", size);
+	fd->status = cc1101_read(CC1101_RXFIFO, data, size);
+	size_t rx_len = MIN((size_t)data[0], size);
 
-	size_t rx_len = MIN((size_t)rx_data, size);
-	status = cc1101_read(CC1101_RXFIFO, data, rx_len);
-	LOG_INFO("RxLen[%d] [%d] s[%d]\n", rx_len, size, STATUS_STATE(status));
+	cc1101_read(CC1101_LQI, &fd->lqi, 1);
+	cc1101_read(CC1101_RSSI, &fd->rssi, 1);
+	fd->rssi = cc1101_rssidBm(fd->rssi, 74);
+	LOG_INFO("Rx:s1[%d]lqi[%d]\n", STATUS_STATE(fd->status),
+						fd->lqi);
 
-	radio_waitIdle(-1);
-	fd->lqi = radio_lqi();
-	fd->rssi = radio_rssi();
-	fd->status = cc1101_strobe(CC1101_SFRX);
-	LOG_INFO("Rx: s1[%d], lqi[%d] rssi[%d]\n", STATUS_STATE(fd->status),
-						fd->lqi & ~CC1101_LQI_CRC_OK, fd->rssi);
-
-	LOG_INFOB(
+	LOG_ERRB(
 	kputs("[");
 	for (size_t i = 0; i < rx_len; i++)
 		kprintf("%x ", data[i]);
 	kprintf("] %d\n", rx_len);
 	);
 
+	// No more data, flush rx fifo.
+	cc1101_strobe(CC1101_SFRX);
+	radio_goIdle();
+
 	/* check if fifo data is valid packet */
-	if (fd->lqi & CC1101_LQI_CRC_OK)
+	if (!(fd->lqi & CC1101_LQI_CRC_OK))
 	{
-		fd->lqi &= ~CC1101_LQI_CRC_OK;
-		return rx_len;
+		fd->lqi = 0;
+		fd->error = RADIO_RX_ERR;
+		return RADIO_RX_ERR;
 	}
 
-	fd->lqi = 0;
-	fd->error = RADIO_RX_ERR;
-	return RADIO_RX_ERR;
+	fd->lqi &= ~CC1101_LQI_CRC_OK;
+	return rx_len;
 }
 
 void radio_init(Radio *fd, const Setting * settings)
@@ -328,3 +333,4 @@ void radio_init(Radio *fd, const Setting * settings)
 	fd->fd.clearerr = radio_clearerr;
 	fd->error = 0;
 }
+
