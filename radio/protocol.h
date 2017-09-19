@@ -51,49 +51,25 @@
 /*
  * Settings
  */
-#define CMD_SLEEP_TIME               15      //s
-#define CMD_RETRY_TIME             1*1000 //ms
-#define CMD_MAX_RETRY               3
+#define CMD_SLEEP_TIME            24*60   //s
+#define CMD_RETRY_TIME                500 //ms
+#define CMD_MAX_RETRY                 3
 
 /* Protocol constant define */
 #define PROTO_ACK    0x06
 #define PROTO_NACK   0x15
-
-/* Protocol errors */
-#define PROTO_OK             0
-#define PROTO_ERR           -1
-#define PROTO_WRONG_ADDR    -2
-#define PROTO_TIMEOUT       -3
-
-/* Settings */
-// See Protocol structure, we remove the other fields.
-#define PROTO_DATALEN  \
-	(RADIO_MAXPAYLOAD_LEN - \
-		(  \
-			sizeof(uint8_t) + \
-			sizeof(uint8_t) + \
-			sizeof(uint32_t) \
-		 ) \
-	)
 
 typedef struct PACKED Protocol
 {
 	uint8_t len;
 	uint8_t addr;
 	uint32_t timestamp;
-	uint8_t data[PROTO_DATALEN];
 } Protocol;
 
-
-
-int protocol_decode(Radio *fd, Protocol *proto);
-void protocol_encode(uint8_t id, uint8_t cfg, Radio *fd, Protocol *proto);
-int protocol_poll(void);
-int protocol_isDataChage(Protocol *proto);
-void protocol_updateRot(Protocol *proto);
-void slave_shutdown(void);
-
-void protocol_init(Protocol *proto);
+int protocol_encode(uint8_t id, uint8_t cfg, Protocol *prt, uint8_t *data, size_t len);
+int protocol_decode(Radio *fd, Protocol *prt, uint8_t *data, size_t len);
+int protocol_decodeReply(Protocol *prt, uint8_t *buf,size_t buf_len, uint8_t *data, size_t len);
+int protocol_encodeReply(uint8_t id, Protocol *prt, uint8_t *buf,size_t buf_len, uint8_t *data, size_t len);
 
 #endif /* RADIO_PROTOCOL_H */
 
