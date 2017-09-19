@@ -96,6 +96,9 @@ INLINE int measure_light(uint8_t *data, size_t len)
 int measure_pressure(uint8_t *data, size_t len);
 int measure_pressureTemp(uint8_t *data, size_t len);
 
+int measure_updateRot(uint8_t *data, size_t len);
+int measure_isDataChage(uint8_t *data, size_t len);
+
 INLINE void measure_disable(void)
 {
 	MEASURE_OFF();

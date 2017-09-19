@@ -30,6 +30,10 @@
 #include "hw/hw_adc.h"
 #include "hw/hw_measure.h"
 
+// Define logging setting (for cfg/log.h module).
+#define LOG_LEVEL   2
+#define LOG_FORMAT  0
+#include <cfg/log.h>
 #include <cfg/macros.h>
 
 #include <io/stm32.h>
@@ -40,7 +44,10 @@
 #include <drv/timer.h>
 #include <drv/i2c.h>
 #include <drv/mpl3115a2.h>
+#include <drv/rtc.h>
+#include <drv/bkp_stm32.h>
 
+#include <algo/rotating_hash.h>
 #include <algo/table.h>
 
 #include <string.h>
@@ -174,6 +181,36 @@ void measure_enable(int cfg)
 		i2c_init(&i2c, I2C2, CONFIG_I2C_FREQ);
 		mpl3115a2_init(&i2c);
 	}
+}
+
+int measure_updateRot(uint8_t *data, size_t len)
+{
+	// Save the rot of current encoded data.
+	uint16_t rot;
+	rotating_init(&rot);
+	rotating_update(data, len, &rot);
+	LOG_INFO("Update rot in bkp[%d]\n", rot);
+	bkp_write(&rot, sizeof(uint16_t));
+
+	return 0;
+}
+
+int measure_isDataChage(uint8_t *data, size_t len)
+{
+	uint16_t rot;
+	uint16_t prev_rot;
+
+	bkp_read(&prev_rot, sizeof(uint16_t));
+
+	rotating_init(&rot);
+	rotating_update(data, len, &rot);
+	LOG_INFO("Prev[%d] Now[%d]\n", prev_rot, rot);
+
+	if (rot == prev_rot)
+		return 0;
+
+	bkp_write(&rot, sizeof(uint16_t));
+	return 1;
 }
 
 void measure_init(void)
