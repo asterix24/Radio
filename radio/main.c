@@ -25,6 +25,8 @@
  *
  */
 
+#include "buildrev.h"
+
 #include "radio_cc1101.h"
 #include "radio_cfg.h"
 #include "protocol.h"
@@ -34,6 +36,7 @@
 
 #include "hw/hw_cc1101.h"
 #include "hw/hw_adc.h"
+#include "hw/hw_pwr.h"
 
 #include <cfg/debug.h>
 
@@ -56,9 +59,25 @@
 
 #include <string.h>
 
+
+#define REPLY_BUF_SIZE (sizeof(Protocol)+sizeof(uint8_t))
+
+
 static Radio radio;
 static Protocol proto;
+static uint8_t payload[RADIO_MAXPAYLOAD_LEN];
 static uint8_t my_id;
+static int tx_len;
+
+
+static void slave_shutdown(void)
+{
+	uint32_t wup = rtc_time() + (uint32_t)CMD_SLEEP_TIME;
+	LOG_WARN("Bye! wakeup to %lds\n", wup);
+	rtc_setAlarm(wup);
+	radio_sleep();
+	go_standby();
+}
 
 static void init(void)
 {
@@ -76,39 +95,40 @@ static void init(void)
 	int cfg = radio_cfg(my_id);
 	ASSERT(cfg >= 0);
 
-	kprintf("\n\n <::== RADIO LOG SYSTEM ==::>\n\n");
-	LOG_INFO("Module [%d] cfg[0x%x]\n", my_id, cfg);
+	kprintf("\n\n::== RADIO LOG SYSTEM ==::\n");
+	kprintf("Buildver %d\n", VERS_BUILD);
+	kprintf("Module[%d] cfg[0x%x]\n", my_id, cfg);
 
 	measure_init();
 	measure_enable(cfg);
-	protocol_init(&proto);
 
 	if (my_id == RADIO_MASTER)
 	{
 		// We are master we trasmit with max power
 		// and we wait until a slave write to us.
-		radio_txPwr(&radio, 0xC0);
 		radio_timeout(&radio, -1);
+		radio_txPwr(&radio, 0xC0);
 	}
 	else
 	{
-		protocol_encode(my_id, cfg, &radio, &proto);
+		timer_delay(500);
+		tx_len = protocol_encode(my_id, cfg, &proto, payload, RADIO_MAXPAYLOAD_LEN);
 		// We already make sensors measures, so shutdown all
 		measure_disable();
 
-		// No data changes, go sleep.
-		if (!protocol_isDataChage(&proto))
-		{
-			slave_shutdown();
-			return;
-		}
-		// Last measure are changed, update checksum.
-		protocol_updateRot(&proto);
+		//// No data changes, go sleep.
+		//if (!measure_isDataChage(payload, proto.len))
+		//{
+		//	slave_shutdown();
+		//	return;
+		//}
+		//// Last measure are changed, update checksum.
+		//measure_updateRot(payload, proto.len);
 
 		// We are slave to preserve a battery we trasmit with
 		// low power and wait only the ack from master before to
 		// go sleep.
-		radio_txPwr(&radio, 0x03);
+		radio_txPwr(&radio, 0x50);
 		radio_timeout(&radio, 0);
 	}
 
@@ -119,36 +139,32 @@ int main(void)
 	init();
 
 	int tx_retry = 0;
+	int ret = 0;
 	while (1)
 	{
 		if (my_id == RADIO_MASTER)
 		{
-			protocol_encode(my_id, radio_cfg(my_id), &radio, &proto);
+			tx_len = protocol_encode(my_id, radio_cfg(my_id), &proto, payload, RADIO_MAXPAYLOAD_LEN);
 
-			memset(&proto, 0, sizeof(Protocol));
-			size_t rx_len = kfile_read(&radio.fd, &proto, sizeof(Protocol));
-			int ret = kfile_error(&radio.fd);
-			if (ret < 0)
-			{
-				LOG_ERR("Recv Err[%d]\n", ret);
-				kfile_clearerr(&radio.fd);
-				continue;
-			}
-
+			memset(payload, 0, RADIO_MAXPAYLOAD_LEN);
+			size_t rx_len = kfile_read(&radio.fd, payload, RADIO_MAXPAYLOAD_LEN);
+			kfile_error(&radio.fd);
+			kfile_clearerr(&radio.fd);
 			if(rx_len > 0)
 			{
-				LOG_INFO("Recv[%d]add[%d]\n", rx_len, proto.addr);
-				proto.data[0] = PROTO_ACK;
-				if (protocol_decode(&radio, &proto) != 0)
-				{
-					proto.data[0] = PROTO_NACK;
-					LOG_ERR("Nack\n");
-				}
+				LOG_INFO("RAddr[%d]l[%d]\n", proto.addr, rx_len);
+				uint8_t reply = PROTO_ACK;
+				if (protocol_decode(&radio, &proto, payload, RADIO_MAXPAYLOAD_LEN) != 0)
+					reply = PROTO_NACK;
+
+				memset(payload, 0, RADIO_MAXPAYLOAD_LEN);
+				tx_len = protocol_encodeReply(proto.addr, &proto, &reply,sizeof(uint8_t), \
+						payload, RADIO_MAXPAYLOAD_LEN);
 
 				for (int i = 0; i < CMD_MAX_RETRY; i++)
 				{
-					kfile_write(&radio.fd, &proto, sizeof(Protocol));
-					ret = kfile_error(&radio.fd);
+					ret = kfile_write(&radio.fd, payload, tx_len);
+					kfile_error(&radio.fd);
 					kfile_clearerr(&radio.fd);
 					LOG_INFO("Send[%d] ret[%d]\n", proto.addr, ret);
 					timer_delay(500);
@@ -158,35 +174,37 @@ int main(void)
 		}
 		else
 		{
-			Protocol rcv_proto;
-			memset(&rcv_proto, 0, sizeof(Protocol));
-			size_t rx_len = kfile_read(&radio.fd, &rcv_proto, sizeof(Protocol));
-			int ret = kfile_error(&radio.fd);
+
+			Protocol rx_proto;
+			uint8_t read_buf[REPLY_BUF_SIZE];
+			memset(read_buf, 0, REPLY_BUF_SIZE);
+			int rx_len = kfile_read(&radio.fd, read_buf, REPLY_BUF_SIZE);
+
+			kfile_error(&radio.fd);
 			kfile_clearerr(&radio.fd);
-			LOG_ERR("Recv[%d] len[%d]\n", ret, rx_len);
 			radio_timeout(&radio, CMD_RETRY_TIME);
 
-			if (rx_len > 0 && ret >= 0)
+			if (rx_len > 0)
 			{
-				LOG_INFO("id[%d]->[%d]\n", rcv_proto.addr, rcv_proto.data[0]);
-
-				if(rcv_proto.addr != my_id)
+				uint8_t reply = 0;
+				protocol_decodeReply(&rx_proto, &reply, sizeof(reply), read_buf, REPLY_BUF_SIZE);
+				if(rx_proto.addr != my_id)
 				{
-					LOG_INFO("No for us\n");
+					LOG_INFO("Skip pkg\n");
 					continue;
 				}
 
 				// Slave module, if package is sent correctly goes to sleep
 				// otherwise retry.
-				if (rcv_proto.data[0] == PROTO_ACK)
+				if (reply == PROTO_ACK)
 					slave_shutdown();
 			}
 
-			kfile_write(&radio.fd, &proto, sizeof(Protocol));
-			ret = kfile_error(&radio.fd);
+			ret = kfile_write(&radio.fd, payload, tx_len);
+			kfile_error(&radio.fd);
 			kfile_clearerr(&radio.fd);
 
-			LOG_INFO("Send[%d] ret[%d]\n", proto.addr, ret);
+			LOG_WARN("Send[%d]\n", ret);
 
 			if (tx_retry == CMD_MAX_RETRY)
 				slave_shutdown();
